@@ -1,0 +1,19 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+.dpr-cache/
+.playwright-mcp/
+
+# Go
+/bin/
+/dist/
+/coverage.out
+*.test
+
+# Generated diagram sources
+/docs/diagrams/*.html
+
+# Editor
+.idea/
+.vscode/
