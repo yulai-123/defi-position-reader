@@ -22,12 +22,14 @@ type SyncRequest struct {
 type SyncResult struct {
 	Metadata core.MetadataInfo `json:"metadata"`
 	Items    int               `json:"items"`
+	Details  map[string]any    `json:"details,omitempty"`
 }
 
 type FetchRequest struct {
-	Chain core.Chain
-	Owner string
-	Store cache.Store
+	Chain          core.Chain
+	Owner          string
+	Store          cache.Store
+	MetadataMaxAge time.Duration
 }
 
 type MetadataSyncer interface {

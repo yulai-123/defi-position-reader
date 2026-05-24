@@ -17,7 +17,7 @@ DeFi 资产并不总是直接表现为钱包里的 ERC20 或 NFT。很多时候�
 1. 定义统一的 Position 数据模型，用来描述用户在协议中的份额、底层资产和债务。
 2. 拆分协议公共数据同步和用户资产读取逻辑，让每个协议可以独立实现自己的 Adapter。
 3. 提供 CLI、缓存和协议注册机制，跑通从 metadata 同步到用户 Position 输出的完整流程。
-4. 为后续展示资产穿透链路预留空间，例如在 CLI 中展示某个 Position 是如何从凭证、池子状态或协议配置一步步计算出来的。
+4. 为资产穿透链路展示预留空间，例如在 CLI 中展示某个 Position 是如何从凭证、池子状态或协议配置一步步计算出来的。
 
 ## 资产分类与问题边界
 
@@ -55,11 +55,11 @@ DeFi 资产并不总是直接表现为钱包里的 ERC20 或 NFT。很多时候�
 
 ## 具体架构
 
-从代码运行链路看，项目更适合按几个核心概念理解：CLI、Protocol Registry、Adapter、公共模型与缓存层。CLI 提供命令入口；Protocol Registry 根据 chain 和 protocol 选择需要执行的 Adapter；每个 Adapter 再提供自己的 MetadataSyncer 和 Fetcher；公共模型与缓存层则提供统一数据结构和 metadata 存储能力。
+从代码运行链路看，项目更适合按四个核心概念理解：CLI、Service、Protocol Registry 与 Adapter、公共模型与缓存层。CLI 提供命令入口；Service 负责应用编排；Protocol Registry 根据 chain 和 protocol 选择需要执行的 Adapter；每个 Adapter 再提供自己的 MetadataSyncer 和 Fetcher；公共模型与缓存层则提供统一数据结构和 metadata 存储能力。
 
 CLI 层是当前项目的命令入口。用户可以通过 CLI 查看支持的链和协议，触发 metadata 同步，也可以查询某个地址在指定协议中的资产结果。
 
-当前代码里，`pkg/service` 只是一个较薄的编排层，用来把 Registry、Adapter 和 Metadata Store 串起来。执行 `sync-metadata` 时，会先通过 Registry 找到目标 Adapter，再调用它的 MetadataSyncer；执行 `positions` 时，会调用目标 Adapter 的 Fetcher，并对返回的 Position 做必要的补全和排序。
+Service 层位于 `pkg/service`，负责把 Registry、Adapter 和 Metadata Store 串起来。执行 `sync-metadata` 时，Service 会先通过 Registry 找到目标 Adapter，再调用它的 MetadataSyncer；执行 `positions` 时，Service 会调用目标 Adapter 的 Fetcher，并对返回的 Position 做必要的补全和排序。
 
 Adapter 是协议接入的边界。它负责声明协议描述信息，并提供对应的 MetadataSyncer 和 Fetcher。
 
@@ -67,7 +67,7 @@ MetadataSyncer 负责同步协议级别的公共数据，例如市场列表、�
 
 Fetcher 则负责读取用户在协议中的仓位状态，例如凭证代币余额、质押份额、借贷仓位、赎回队列等；随后结合协议规则和必要的 metadata，将这些原始状态解析成统一的 Position 结果，尽量拆分出 shares、underlying、debt 等底层资产信息。
 
-MetadataSyncer 本身不实现定时任务框架，它只提供一次同步逻辑；在实际使用中，可以通过 CLI 手动触发，也可以交给 cron 或外部调度系统周期性执行。当前实现会把 Metadata Store 传给 Syncer，是否写入缓存由具体 Syncer 决定；同步后的数据可以供 Fetcher 后续读取，数据新鲜度则取决于外部触发同步的频率。
+MetadataSyncer 本身不实现定时任务框架，它只提供一次同步逻辑；在实际使用中，可以通过 CLI 手动触发，也可以交给 cron 或外部调度系统周期性执行。当前设计中，Service 会把 Metadata Store 传给 Syncer，是否写入缓存由具体 Syncer 决定；同步后的数据可以供 Fetcher 后续读取，数据新鲜度则取决于外部触发同步的频率。
 
 公共模型与缓存层可以理解为项目的共享基建。代码中的 `pkg/core` 定义了各层共同使用的数据结构，例如 Chain、Token、TokenAmount、Position、MetadataInfo 和 ProtocolDescriptor；`pkg/cache` 则提供 Metadata Store，用来缓存协议公共数据。当前项目里 Metadata Store 默认使用 SQLite 实现，后续也可以替换成其它存储。
 
@@ -85,8 +85,10 @@ pkg/core/         公共数据模型，例如 Chain、Token、Position、Metadat
 pkg/adapter/      协议接入接口和 Protocol Registry
 pkg/cache/        metadata cache 接口和 SQLite 实现
 pkg/chain/        默认 EVM 链配置
+pkg/evm/          EVM RPC、Multicall3 和数值格式化工具
 pkg/service/      应用编排层，串联 Registry、Adapter 和 Metadata Store
 protocols/demo/   离线演示协议，跑通 metadata sync 和 position fetch 流程
+protocols/aavev3/ Aave V3 真实协议接入，支持 lending 与 yield 仓位
 ```
 
 协议接入的核心边界定义在 `pkg/adapter` 中。
@@ -134,4 +136,4 @@ type Position struct {
 
 DeFi 协议资产读取的框架骨架并不复杂：通过 MetadataSyncer 维护协议公共数据，再由 Fetcher 读取用户仓位，并解析成统一的 Position 结果。真正复杂的是不同协议的仓位模型差异，以及从凭证、池子状态、协议配置到最终底层 Token 的穿透计算过程。
 
-这个项目会先保持轻量，重点跑通 EVM 协议资产读取的核心链路。后续接入 Lido、Aave V3、Uniswap V3 等真实协议时，可以在同一套 Adapter、Metadata Store 和 Position 模型上继续扩展，并逐步把每个资产的解析路径展示出来。
+这个项目会先保持轻量，重点跑通 EVM 协议资产读取的核心链路。当前已经可以在同一套 Adapter、Metadata Store 和 Position 模型上接入真实协议，例如 Aave V3；后续继续接入 Lido、Uniswap V2 / V3、Compound V3 等协议时，也可以沿用这套结构，并逐步把每个资产的解析路径展示出来。

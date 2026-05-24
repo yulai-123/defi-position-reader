@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/yulai-123/defi-position-reader/pkg/adapter"
 	"github.com/yulai-123/defi-position-reader/pkg/cache"
@@ -24,9 +25,10 @@ func NewPositionService(registry *adapter.Registry, store cache.Store) *Position
 }
 
 type FetchRequest struct {
-	Chain     core.Chain
-	Owner     string
-	Protocols []string
+	Chain          core.Chain
+	Owner          string
+	Protocols      []string
+	MetadataMaxAge time.Duration
 }
 
 type SyncRequest struct {
@@ -62,9 +64,10 @@ func (s *PositionService) FetchPositions(ctx context.Context, req FetchRequest) 
 		}
 
 		result, err := fetcher.Fetch(ctx, adapter.FetchRequest{
-			Chain: req.Chain,
-			Owner: strings.TrimSpace(req.Owner),
-			Store: s.store,
+			Chain:          req.Chain,
+			Owner:          strings.TrimSpace(req.Owner),
+			Store:          s.store,
+			MetadataMaxAge: req.MetadataMaxAge,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("fetch positions: protocol %q: %w", descriptor.ID, err)

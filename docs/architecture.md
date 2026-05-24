@@ -4,7 +4,7 @@
 
 1. 命令进来后，代码如何流动。
 2. 每个模块负责什么。
-3. 后续接入一个真实 DeFi 协议时，需要实现哪些边界。
+3. 接入一个真实 DeFi 协议时，需要实现哪些边界。
 
 如果想了解为什么要这样拆分，请先看 [框架介绍博客](./blogs/000-defi-asset-position-framework.md)。
 
@@ -29,7 +29,7 @@ CLI
 
 ### sync-metadata
 
-`sync-metadata` 用来同步协议公共数据，例如 market、reserve、pool、token、oracle config。
+`sync-metadata` 用来同步协议公共数据，例如 market、reserve、pool、token、vault config。
 
 ```text
 cmd/dpr
@@ -54,19 +54,21 @@ cmd/dpr
         -> []core.Position
 ```
 
-Fetcher 可以读取 Metadata Store 中已有的协议公共数据，也可以在没有缓存时使用协议内置配置或链上查询作为 fallback。当前 `demo` 协议为了离线演示，使用内置 fixture 数据。
+Fetcher 可以读取 Metadata Store 中已有的协议公共数据，再结合用户维度的链上状态生成 `Position`。当前 `demo` 协议为了离线演示，在没有缓存时会使用内置 fixture 数据；真实协议可以选择更严格的策略，例如 `aave-v3` 会要求 `markets`、`lending-reserves` 和 `yield-vaults` metadata 都存在且未过期，否则直接提示先运行 `sync-metadata`，避免静默漏资产。
 
 ## 模块职责
 
 | 模块 | 职责 |
 | --- | --- |
-| `cmd/dpr` | CLI 入口，解析命令参数并输出 JSON。 |
-| `pkg/chain` | 默认 EVM 链配置，包括 chain id、名称、RPC 环境变量名。 |
+| `cmd/dpr` | CLI 入口，解析命令参数并输出 `json`、`table` 或 `detail`，并可附带 trace。 |
+| `pkg/chain` | 默认 EVM 链配置，包括 chain id、名称、RPC 环境变量名和 public RPC fallback。 |
 | `pkg/core` | 跨模块共享的数据模型，例如 `Chain`、`Token`、`TokenAmount`、`Position`、`MetadataInfo`。 |
 | `pkg/adapter` | 协议接入接口、`MetadataSyncer`、`PositionFetcher` 和 Protocol Registry。 |
 | `pkg/cache` | metadata cache 抽象和 SQLite 实现。 |
+| `pkg/evm` | EVM RPC client、Multicall3 调用封装和数值格式化工具。 |
 | `pkg/service` | 薄编排层，串联 Registry、Adapter 和 Metadata Store。 |
 | `protocols/demo` | 离线演示协议，用 fixture 跑通 metadata sync 和 position fetch 闭环。 |
+| `protocols/aavev3` | Aave V3 真实协议接入，支持 Lending 和 StataToken / static aToken Yield 仓位。 |
 | `docs/blogs` | 技术博客，用来记录框架设计和后续协议接入过程。 |
 
 ## Adapter 接入规范
@@ -99,12 +101,12 @@ Protocol Registry 会根据 `chain` 和 `protocol` 筛选需要执行的 Adapter
 
 常见 metadata 示例：
 
-- Aave V3：reserve 列表、aToken、variable debt token、stable debt token、oracle config。
+- Aave V3：market 列表、reserve 列表、aToken、variable debt token、stable debt token、StataToken / static aToken vault。
 - Uniswap V2：factory、pair 列表、pair token0/token1。
 - Uniswap V3：position manager、factory、pool 配置、tick spacing。
 - Lido：stETH、wstETH、兑换关系和部署地址。
 
-缓存 key 按 `chainId / protocol / namespace` 组织。真实协议可以用 namespace 拆分不同数据集，例如 `reserves`、`pools`、`oracle-config`。
+缓存 key 按 `chainId / protocol / namespace` 组织。真实协议可以用 namespace 拆分不同数据集，例如 Aave V3 当前使用 `markets`、`lending-reserves` 和 `yield-vaults`。
 
 ### PositionFetcher
 
@@ -170,6 +172,6 @@ type MetadataInfo struct {
 - 价格系统和资产估值。
 - HTTP API 或长期运行的索引服务。
 - 强一致区块快照。
-- 完整的解析 trace 展示。
+- 原始 calldata / return data 级别的深度 trace。
 
-这些能力可以在真实协议接入过程中逐步补充。框架层优先保持稳定、清晰和容易测试。
+CLI 已经支持 `-format json|table|detail` 和 `-trace`，用于展示 metadata cache、discovery 和部分 adapter 调用链路；后续如果多个协议都需要更细粒度 trace，可以再把 trace collector 下沉到 service / adapter / evm 层。框架层优先保持稳定、清晰和容易测试。

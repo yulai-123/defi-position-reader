@@ -1,0 +1,69 @@
+[
+  {
+    "id": "ethereum-core-lending-supply-borrow",
+    "chain": "ethereum",
+    "strategy": "lending",
+    "owner": "0x28a55c4b4f9615fde3cdaddf6cc01fcf2e38a6b0",
+    "debankPool": "https://debank.com/protocols/pool/0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2/eth/holders",
+    "expectedPositionTypes": ["lending"],
+    "expectedSymbols": ["WETH", "wstETH", "USDC", "USDT"],
+    "sourceCheckedAt": "2026-05-23",
+    "notes": "Ethereum Core holder observed on DeBank with WETH/wstETH supply and USDC/USDT debt."
+  },
+  {
+    "id": "ethereum-core-yield-waethusdt",
+    "chain": "ethereum",
+    "strategy": "yield",
+    "owner": "0xa484ab92fe32b143aee7019fc1502b1daa522d31",
+    "debankPool": "https://debank.com/protocols/pool/0x7bc3485026ac48b6cf9baf0a377477fff5703af8/eth/holders",
+    "expectedPositionTypes": ["vault"],
+    "expectedSymbols": ["waEthUSDT", "USDT"],
+    "sourceCheckedAt": "2026-05-23",
+    "notes": "Ethereum StataToken yield holder observed with waEthUSDT shares and USDT underlying."
+  },
+  {
+    "id": "ethereum-gho-savings-gap",
+    "chain": "ethereum",
+    "strategy": "unsupported-yield",
+    "owner": "0xb0f8c20b849886cad270d705acc39739c0683f64",
+    "debankPool": "https://debank.com/protocols/pool/0xe1753f2e00940cc31213dd92013cf019dfe4ca1d/eth/holders",
+    "expectedPositionTypes": ["lending"],
+    "expectedSymbols": ["USDe"],
+    "sourceCheckedAt": "2026-05-23",
+    "unsupportedReason": "DeBank classifies this as Yield, but it appears to be a GHO/Savings-style asset rather than the StataToken/static aToken wrappers currently supported by this adapter.",
+    "notes": "Kept as a known coverage gap fixture so future yield expansion has a real address to test against."
+  },
+  {
+    "id": "base-core-lending-supply-borrow",
+    "chain": "base",
+    "strategy": "lending",
+    "owner": "0xb3277d631f2cb651b3cbc5a54fccdabe69d12942",
+    "debankPool": "https://debank.com/protocols/pool/0xa238dd80c259a72e81d7e4664a9801593f98d1c5/base/holders",
+    "expectedPositionTypes": ["lending"],
+    "expectedSymbols": ["WETH", "USDC", "cbBTC"],
+    "sourceCheckedAt": "2026-05-23",
+    "notes": "Base Core holder observed with WETH supply and USDC/WETH/cbBTC debt."
+  },
+  {
+    "id": "base-core-yield-wabasusdc",
+    "chain": "base",
+    "strategy": "yield",
+    "owner": "0xba1333333333a1ba1108e8412f11850a5c319ba9",
+    "debankPool": "https://debank.com/protocols/pool/0xc768c589647798a6ee01a91fde98ef2ed046dbd6/base/holders",
+    "expectedPositionTypes": ["lending", "vault"],
+    "expectedSymbols": ["waBasUSDC", "USDC", "waBasGHO", "waBasWETH", "waBaswstETH"],
+    "sourceCheckedAt": "2026-05-23",
+    "notes": "Base StataToken holder observed with multiple Aave V3 wrapped yield positions."
+  },
+  {
+    "id": "arbitrum-core-lending-usdc",
+    "chain": "arbitrum",
+    "strategy": "lending",
+    "owner": "0xa5b0edf6b55128e0ddae8e51ac538c3188401d41",
+    "debankPool": "https://debank.com/protocols/pool/0x794a61358d6845594f94dc1db02a252b5b4814ad/arb/holders",
+    "expectedPositionTypes": ["lending"],
+    "expectedSymbols": ["USDC"],
+    "sourceCheckedAt": "2026-05-23",
+    "notes": "Arbitrum Core holder observed with USDC supply."
+  }
+]

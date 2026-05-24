@@ -19,6 +19,10 @@ var defaultChains = []core.Chain{
 		DisplayName:    "Ethereum",
 		NativeCurrency: "ETH",
 		RPCUrlEnv:      "ETHEREUM_RPC_URL",
+		PublicRPCURLs: []string{
+			"https://ethereum-rpc.publicnode.com",
+			"https://1rpc.io/eth",
+		},
 	},
 	{
 		ID:             ArbitrumChainID,
@@ -26,6 +30,11 @@ var defaultChains = []core.Chain{
 		DisplayName:    "Arbitrum One",
 		NativeCurrency: "ETH",
 		RPCUrlEnv:      "ARBITRUM_RPC_URL",
+		PublicRPCURLs: []string{
+			"https://arbitrum-one-rpc.publicnode.com",
+			"https://arb1.arbitrum.io/rpc",
+			"https://1rpc.io/arb",
+		},
 	},
 	{
 		ID:             BaseChainID,
@@ -33,12 +42,20 @@ var defaultChains = []core.Chain{
 		DisplayName:    "Base",
 		NativeCurrency: "ETH",
 		RPCUrlEnv:      "BASE_RPC_URL",
+		PublicRPCURLs: []string{
+			"https://base-rpc.publicnode.com",
+			"https://mainnet.base.org",
+			"https://1rpc.io/base",
+		},
 	},
 }
 
 func DefaultChains() []core.Chain {
 	chains := make([]core.Chain, len(defaultChains))
 	copy(chains, defaultChains)
+	for i := range chains {
+		chains[i].PublicRPCURLs = append([]string(nil), chains[i].PublicRPCURLs...)
+	}
 	return chains
 }
 

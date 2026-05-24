@@ -4,7 +4,7 @@ DeFi Position Reader 是一个用 Go 编写的轻量 DeFi 协议资产读取与�
 
 它关注的不是普通钱包余额，而是用户在 DeFi 协议里的仓位：LP 份额、Vault Share、借贷凭证、债务、质押记录、待赎回资产等。项目目标是用一套清晰、可运行、可测试的框架，逐步展示不同协议的链上仓位如何被读取，并尽量穿透到底层 Token。
 
-> 当前项目处于框架阶段，内置 `demo` 协议用于离线演示 metadata sync、cache 和 position fetch 闭环；真实协议会按 adapter 逐步接入。
+> 当前项目处于框架阶段，内置 `demo` 协议用于离线演示 metadata sync、cache 和 position fetch 闭环；`aave-v3` 已开始接入，支持 Lending 仓位和 ERC-4626 StataToken / static aToken Yield 仓位读取。
 
 ## 项目定位
 
@@ -60,6 +60,8 @@ go run ./cmd/dpr chains
 go run ./cmd/dpr protocols
 go run ./cmd/dpr sync-metadata -chain ethereum -protocol demo
 go run ./cmd/dpr positions -chain ethereum -protocol demo -address 0x0000000000000000000000000000000000000001
+go run ./cmd/dpr sync-metadata -chain base -protocol aave-v3
+go run ./cmd/dpr positions -chain base -protocol aave-v3 -address 0x...
 ```
 
 也可以直接运行 demo 闭环：
@@ -68,7 +70,54 @@ go run ./cmd/dpr positions -chain ethereum -protocol demo -address 0x00000000000
 make run-demo
 ```
 
-当前 `demo` 协议使用内置 fixture 数据，不需要 RPC key。后续接入真实协议时，再使用 `.env.example` 中的 RPC 配置。
+当前 `demo` 协议使用内置 fixture 数据，不需要 RPC key；`aave-v3` 会读取链上合约，推荐按 `.env.example` 配置自有 RPC URL。未配置时会使用内置 public RPC fallback，但 public RPC 可能限流，稳定性不如自有节点。
+
+`positions` 会先检查 `sync-metadata` 产出的 metadata 是否存在且未过期，默认最大年龄是 `24h`。如果 metadata 缺失或过期，需要先运行：
+
+```bash
+go run ./cmd/dpr sync-metadata -chain base -protocol aave-v3
+```
+
+### Aave V3 真实链上 Case
+
+下面以 Base 上的 Aave V3 为例，展示从 metadata 同步到用户资产读取的完整链路。地址可以替换成任意 EVM 地址。
+
+```bash
+# 1. 可选但推荐：配置自有 RPC，公共 RPC 可能限流或 EOF。
+# export BASE_RPC_URL=https://your-base-rpc.example
+
+# 2. 同步 Aave V3 公共数据，包括 markets、reserves 和 yield vaults。
+go run ./cmd/dpr sync-metadata \
+  -chain base \
+  -protocol aave-v3 \
+  -format detail \
+  -trace
+
+# 3. 查看协议配置和 metadata cache 状态。
+go run ./cmd/dpr explain \
+  -chain base \
+  -protocol aave-v3 \
+  -format detail
+
+# 4. 查询用户资产，table 模式适合快速查看结果。
+go run ./cmd/dpr positions \
+  -chain base \
+  -protocol aave-v3 \
+  -address 0x448b950a1a58301fa399cc2e47234305d6599bad \
+  -format table \
+  -trace
+
+# 5. 如需排查底层链路，使用 detail + calls trace。
+go run ./cmd/dpr positions \
+  -chain base \
+  -protocol aave-v3 \
+  -address 0x448b950a1a58301fa399cc2e47234305d6599bad \
+  -format detail \
+  -trace \
+  -trace-level calls
+```
+
+`sync-metadata -format detail -trace` 会展示 discovery 阶段，例如 reserve / vault 发现、Multicall 子调用数量和写入的 metadata namespace。`positions -format table` 会展示统一后的 `SUPPLY/SHARES`、`UNDERLYING`、`DEBT` 和 `HEALTH`；`positions -format detail` 会继续展开 market、reserve、vault 和协议扩展字段。
 
 ## 示例输出
 
@@ -94,17 +143,19 @@ make run-demo
 | 类型 | 状态 |
 | --- | --- |
 | Chains | Ethereum, Arbitrum One, Base |
-| Protocols | `demo` fixture adapter |
+| Protocols | `demo` fixture adapter, `aave-v3` Lending + Yield adapter |
 | Cache | SQLite metadata store |
-| CLI | `chains`, `protocols`, `sync-metadata`, `positions` |
-| Tests | `go test ./...`, `go test ./... -race`, coverage 90%+ |
+| CLI | `chains`, `protocols`, `sync-metadata`, `positions`, `explain`; `sync-metadata` / `positions` / `explain` 支持 `-format json|table|detail` 和 `-trace` |
+| Tests | `go test ./...`；Aave V3 live smoke tests 通过 `DPR_LIVE_TESTS=1` 显式开启 |
+
+Aave V3 接入流程图见 [docs/diagrams/aave-v3-integration-flow.png](./docs/diagrams/aave-v3-integration-flow.png)，测试计划见 [docs/testing/aave-v3-test-plan.md](./docs/testing/aave-v3-test-plan.md)，CLI 展示与 trace 设计见 [docs/cli-design.md](./docs/cli-design.md)。
 
 ## 协议接入路线
 
 后续会按协议逐个接入，并为每个协议补充资产解析文章。候选协议包括：
 
 - Lido：staking / wrapper 类资产，适合展示 stETH、wstETH 与底层 ETH 的关系。
-- Aave V3：借贷协议，适合展示 reserve metadata、aToken、debt token、underlying 和 debt。
+- Aave V3：借贷协议，适合展示 reserve metadata、aToken、debt token、underlying、debt 和 ERC-4626 yield vault。当前已支持 Lending 和 Yield；staked AAVE / Safety Module 暂不作为主线。
 - Uniswap V2：经典 LP Token，适合展示池子储备和份额换算。
 - Uniswap V3：NFT LP 仓位，适合展示 tick、liquidity 和底层资产估算。
 - Compound V3：单一基础资产借贷模型，适合和 Aave V3 对比。
@@ -115,6 +166,7 @@ make run-demo
 ## 技术博客
 
 - [000 - DeFi 资产读取与解析：框架介绍](./docs/blogs/000-defi-asset-position-framework.md)
+- [001 - DeFi 资产读取与解析：Aave V3 协议接入](./docs/blogs/001-aave-v3-protocol-integration.md)
 
 后续每接入一个真实协议，都会补充对应的协议资产解析文章。
 

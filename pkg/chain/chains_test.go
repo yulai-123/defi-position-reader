@@ -11,9 +11,13 @@ func TestDefaultChainsReturnsCopy(t *testing.T) {
 	}
 
 	chains[0].Name = "changed"
+	chains[0].PublicRPCURLs[0] = "changed"
 	again := DefaultChains()
 	if again[0].Name == "changed" {
 		t.Fatal("DefaultChains should return a copy")
+	}
+	if again[0].PublicRPCURLs[0] == "changed" {
+		t.Fatal("DefaultChains should return a deep copy of public RPC URLs")
 	}
 }
 
@@ -26,6 +30,9 @@ func TestChainLookup(t *testing.T) {
 	}
 	if ethereum.ID != EthereumChainID {
 		t.Fatalf("unexpected ethereum chain id: %d", ethereum.ID)
+	}
+	if len(ethereum.PublicRPCURLs) == 0 {
+		t.Fatal("expected ethereum public RPC fallbacks")
 	}
 
 	base, ok := ByID(BaseChainID)

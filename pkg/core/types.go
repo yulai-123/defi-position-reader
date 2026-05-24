@@ -2,13 +2,15 @@ package core
 
 import "time"
 
-// Chain 描述一个 EVM 网络。RPCUrlEnv 只保存环境变量名，避免把敏感配置写进代码。
+// Chain describes an EVM network. RPCUrlEnv only stores the environment
+// variable name, keeping sensitive endpoint configuration out of source code.
 type Chain struct {
-	ID             int64  `json:"id"`
-	Name           string `json:"name"`
-	DisplayName    string `json:"displayName"`
-	NativeCurrency string `json:"nativeCurrency"`
-	RPCUrlEnv      string `json:"rpcUrlEnv"`
+	ID             int64    `json:"id"`
+	Name           string   `json:"name"`
+	DisplayName    string   `json:"displayName"`
+	NativeCurrency string   `json:"nativeCurrency"`
+	RPCUrlEnv      string   `json:"rpcUrlEnv"`
+	PublicRPCURLs  []string `json:"publicRpcUrls,omitempty"`
 }
 
 type ProtocolDescriptor struct {

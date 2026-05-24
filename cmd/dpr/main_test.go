@@ -5,6 +5,10 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/yulai-123/defi-position-reader/pkg/adapter"
+	"github.com/yulai-123/defi-position-reader/pkg/core"
 )
 
 func TestParseProtocols(t *testing.T) {
@@ -110,6 +114,156 @@ func TestRunPositions(t *testing.T) {
 	}
 }
 
+func TestRunPositionsTableFormat(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	err := run(context.Background(), []string{
+		"positions",
+		"-chain", "ethereum",
+		"-protocol", "demo",
+		"-address", "0x0000000000000000000000000000000000000001",
+		"-cache-dir", t.TempDir(),
+		"-format", "table",
+	}, &out)
+	if err != nil {
+		t.Fatalf("run positions table: %v", err)
+	}
+	output := out.String()
+	if !strings.Contains(output, "Positions: Ethereum") || !strings.Contains(output, "Demo WETH / USDC LP") || !strings.Contains(output, "0.42 WETH") {
+		t.Fatalf("unexpected table output: %s", output)
+	}
+}
+
+func TestRunPositionsDetailTrace(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	err := run(context.Background(), []string{
+		"positions",
+		"-chain", "ethereum",
+		"-protocol", "demo",
+		"-address", "0x0000000000000000000000000000000000000001",
+		"-cache-dir", t.TempDir(),
+		"-format", "detail",
+		"-trace",
+	}, &out)
+	if err != nil {
+		t.Fatalf("run positions detail trace: %v", err)
+	}
+	output := out.String()
+	if !strings.Contains(output, "Metadata Cache:") || !strings.Contains(output, "Trace") || !strings.Contains(output, "metadata.read") {
+		t.Fatalf("unexpected detail trace output: %s", output)
+	}
+}
+
+func TestRunSyncMetadataTableFormat(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	err := run(context.Background(), []string{
+		"sync-metadata",
+		"-chain", "ethereum",
+		"-protocol", "demo",
+		"-cache-dir", t.TempDir(),
+		"-format", "table",
+	}, &out)
+	if err != nil {
+		t.Fatalf("run sync table: %v", err)
+	}
+	output := out.String()
+	if !strings.Contains(output, "Sync Metadata: Ethereum") || !strings.Contains(output, "demo") || !strings.Contains(output, "markets") {
+		t.Fatalf("unexpected sync table output: %s", output)
+	}
+}
+
+func TestWriteSyncDetailIncludesDiscovery(t *testing.T) {
+	t.Parallel()
+
+	result := syncResultWithDiscovery()
+	var out bytes.Buffer
+	err := writeSyncOutput(&out, core.Chain{ID: 1, DisplayName: "Ethereum"}, []adapter.SyncResult{result}, nil, outputOptions{
+		Format: outputFormatDetail,
+	}, nil)
+	if err != nil {
+		t.Fatalf("write sync output: %v", err)
+	}
+	output := out.String()
+	if !strings.Contains(output, "Discovery:") ||
+		!strings.Contains(output, "discover lending reserves") ||
+		!strings.Contains(output, "DataProvider.getAllReservesTokens") {
+		t.Fatalf("discovery output missing expected details: %s", output)
+	}
+}
+
+func TestAddSyncDiscoveryTrace(t *testing.T) {
+	t.Parallel()
+
+	trace := newTraceRecorder(outputOptions{Trace: true, TraceLevel: traceLevelCalls})
+	addSyncDiscoveryTrace(trace, []adapter.SyncResult{syncResultWithDiscovery()})
+	events := trace.Events()
+	if len(events) == 0 {
+		t.Fatal("expected discovery trace events")
+	}
+	var adapterEvent, evmEvent bool
+	for _, event := range events {
+		if event.Operation == "aave-v3.sync.discover-lending-reserves" {
+			adapterEvent = true
+		}
+		if event.Layer == "evm" && event.Operation == "multicall.aggregate3" {
+			evmEvent = true
+		}
+	}
+	if !adapterEvent || !evmEvent {
+		t.Fatalf("expected adapter and evm discovery events, got %#v", events)
+	}
+}
+
+func TestRunExplain(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	err := run(context.Background(), []string{
+		"explain",
+		"-chain", "ethereum",
+		"-protocol", "demo",
+		"-cache-dir", t.TempDir(),
+	}, &out)
+	if err != nil {
+		t.Fatalf("run explain: %v", err)
+	}
+	output := out.String()
+	if !strings.Contains(output, "Explain: Ethereum") || !strings.Contains(output, "demo") || !strings.Contains(output, "markets:missing") {
+		t.Fatalf("unexpected explain output: %s", output)
+	}
+}
+
+func syncResultWithDiscovery() adapter.SyncResult {
+	return adapter.SyncResult{
+		Metadata: core.MetadataInfo{
+			ChainID:   1,
+			Protocol:  "aave-v3",
+			Namespace: "lending-reserves",
+			Version:   "test",
+			UpdatedAt: time.Date(2026, 5, 24, 1, 0, 0, 0, time.UTC),
+		},
+		Items: 2,
+		Details: map[string]any{
+			"discovery": []map[string]any{
+				{
+					"step":      "discover lending reserves",
+					"operation": "DataProvider.getAllReservesTokens",
+					"markets":   1,
+					"calls":     1,
+					"items":     2,
+					"status":    "ok",
+					"notes":     "one call per market",
+				},
+			},
+		},
+	}
+}
+
 func TestRunRejectsUnknownChain(t *testing.T) {
 	t.Parallel()
 
@@ -127,12 +281,39 @@ func TestRunRejectsInvalidFlags(t *testing.T) {
 		{"protocols", "-bad"},
 		{"sync-metadata", "-bad"},
 		{"positions", "-bad"},
+		{"explain", "-bad"},
 	}
 	for _, args := range commands {
 		var out bytes.Buffer
 		if err := run(context.Background(), args, &out); err == nil {
 			t.Fatalf("expected invalid flag error for args %#v", args)
 		}
+	}
+}
+
+func TestRunRejectsUnknownOutputFormat(t *testing.T) {
+	t.Parallel()
+
+	commands := [][]string{
+		{"sync-metadata", "-format", "yaml"},
+		{"positions", "-format", "yaml"},
+		{"explain", "-format", "yaml"},
+	}
+	for _, args := range commands {
+		var out bytes.Buffer
+		if err := run(context.Background(), args, &out); err == nil {
+			t.Fatalf("expected unknown output format error for args %#v", args)
+		}
+	}
+}
+
+func TestRunRejectsUnknownTraceLevel(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	err := run(context.Background(), []string{"positions", "-trace-level", "loud"}, &out)
+	if err == nil {
+		t.Fatal("expected unknown trace level error")
 	}
 }
 

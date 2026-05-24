@@ -50,7 +50,7 @@ func TestPositionServiceFetchPositionsFiltersAndNormalizes(t *testing.T) {
 			descriptor: core.ProtocolDescriptor{ID: "demo", SupportedChains: []int64{1}},
 			fetcher: fetcherFunc(func(_ context.Context, req adapter.FetchRequest) ([]core.Position, error) {
 				called = true
-				if req.Chain.ID != 1 || req.Owner != "0xabc" || req.Store == nil {
+				if req.Chain.ID != 1 || req.Owner != "0xabc" || req.Store == nil || req.MetadataMaxAge != time.Hour {
 					t.Fatalf("unexpected fetch request: %#v", req)
 				}
 				return []core.Position{{ID: "position-1"}}, nil
@@ -72,8 +72,9 @@ func TestPositionServiceFetchPositionsFiltersAndNormalizes(t *testing.T) {
 
 	svc := NewPositionService(registry, newServiceTestStore(t))
 	positions, err := svc.FetchPositions(context.Background(), FetchRequest{
-		Chain: core.Chain{ID: 1, Name: "ethereum"},
-		Owner: "0xabc",
+		Chain:          core.Chain{ID: 1, Name: "ethereum"},
+		Owner:          "0xabc",
+		MetadataMaxAge: time.Hour,
 	})
 	if err != nil {
 		t.Fatalf("fetch positions: %v", err)
