@@ -37,7 +37,8 @@ const (
 	PositionTypeStaking   PositionType = "staking"
 	PositionTypeLending   PositionType = "lending"
 	PositionTypeLiquidity PositionType = "liquidity"
-	PositionTypeVault     PositionType = "vault"
+	PositionTypeYield     PositionType = "yield"
+	PositionTypeReward    PositionType = "reward"
 )
 
 type Token struct {

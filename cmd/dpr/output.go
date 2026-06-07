@@ -64,18 +64,20 @@ type metadataSnapshot struct {
 }
 
 type discoveryStepView struct {
-	Step      string `json:"step"`
-	Operation string `json:"operation"`
-	Markets   int    `json:"markets,omitempty"`
-	Calls     int    `json:"calls,omitempty"`
-	Items     int    `json:"items,omitempty"`
-	Status    string `json:"status"`
-	Notes     string `json:"notes,omitempty"`
+	Step         string `json:"step"`
+	Operation    string `json:"operation"`
+	Markets      int    `json:"markets,omitempty"`
+	Calls        int    `json:"calls,omitempty"`
+	Items        int    `json:"items,omitempty"`
+	Status       string `json:"status"`
+	Notes        string `json:"notes,omitempty"`
+	AllowFailure bool   `json:"allowFailure,omitempty"`
 }
 
 var knownMetadataNamespaces = map[string][]string{
-	"demo":    {"markets"},
-	"aave-v3": {"markets", "lending-reserves", "yield-vaults"},
+	"demo":        {"markets"},
+	"aave-v3":     {"markets", "lending-reserves", "yield-vaults"},
+	"compound-v3": {"markets", "collateral-assets", "reward-configs"},
 }
 
 func parseOutputOptions(formatValue string, traceLevelValue string, trace bool) (outputOptions, error) {
@@ -452,6 +454,9 @@ func addSyncDiscoveryTrace(trace *traceRecorder, results []adapter.SyncResult) {
 			if step.Notes != "" {
 				attrs["notes"] = step.Notes
 			}
+			if step.AllowFailure {
+				attrs["allowFailure"] = true
+			}
 			trace.Add("adapter", result.Metadata.Protocol+".sync."+slugOperation(step.Step), step.Operation, attrs)
 			if step.Calls > 0 {
 				trace.Add("evm", "multicall.aggregate3", "sync "+step.Step, attrs)
@@ -501,11 +506,15 @@ func discoveryTotals(protocol string, resultItems int, steps []discoveryStepView
 	totalCalls := 0
 	totalItems := 0
 	batches := 0
+	allowFailure := false
 	for _, step := range steps {
 		totalCalls += step.Calls
 		totalItems += step.Items
 		if step.Calls > 0 {
 			batches++
+		}
+		if step.AllowFailure {
+			allowFailure = true
 		}
 	}
 	return map[string]any{
@@ -515,7 +524,7 @@ func discoveryTotals(protocol string, resultItems int, steps []discoveryStepView
 		"multicallCalls":   totalCalls,
 		"stageItems":       totalItems,
 		"resultItems":      resultItems,
-		"allowFailure":     false,
+		"allowFailure":     allowFailure,
 	}
 }
 
@@ -537,45 +546,71 @@ func addPositionTrace(trace *traceRecorder, positions []core.Position) {
 		return
 	}
 	for _, position := range positions {
-		if position.Protocol != "aave-v3" {
-			continue
-		}
-		switch position.Type {
-		case core.PositionTypeLending:
-			addAaveLendingTrace(trace, position)
-		case core.PositionTypeVault:
-			addAaveYieldTrace(trace, position)
+		switch position.Protocol {
+		case "aave-v3":
+			switch position.Type {
+			case core.PositionTypeLending:
+				addAaveLendingTrace(trace, position)
+			case core.PositionTypeYield:
+				addAaveYieldTrace(trace, position)
+			}
+		case "compound-v3":
+			addCompoundTrace(trace, position)
 		}
 	}
 }
 
 func addPositionTraceSummary(trace *traceRecorder, positions []core.Position) {
 	lendingPositions := 0
-	vaultPositions := 0
+	yieldPositions := 0
 	reserveReads := 0
+	compoundYieldPositions := 0
+	compoundLendingPositions := 0
+	compoundRewardPositions := 0
+	compoundCollateralReads := 0
 	for _, position := range positions {
-		if position.Protocol != "aave-v3" {
-			continue
+		switch position.Protocol {
+		case "aave-v3":
+			switch position.Type {
+			case core.PositionTypeLending:
+				lendingPositions++
+				reserveReads += extraSliceLen(position.Extra, "reserves")
+			case core.PositionTypeYield:
+				yieldPositions++
+			}
+		case "compound-v3":
+			switch extraString(position.Extra, "strategy") {
+			case "yield":
+				compoundYieldPositions++
+			case "lending":
+				compoundLendingPositions++
+				compoundCollateralReads += extraInt(position.Extra, "collateralCount")
+			case "reward":
+				compoundRewardPositions++
+			}
 		}
-		switch position.Type {
-		case core.PositionTypeLending:
-			lendingPositions++
-			reserveReads += extraSliceLen(position.Extra, "reserves")
-		case core.PositionTypeVault:
-			vaultPositions++
+	}
+	if lendingPositions > 0 || yieldPositions > 0 {
+		attrs := map[string]any{
+			"lendingPositions": lendingPositions,
+			"yieldPositions":   yieldPositions,
+			"reserveReads":     reserveReads,
+			"allowFailure":     false,
 		}
+		trace.Add("adapter", "aave-v3.fetch.summary", "Aave V3 position fetch stages completed", attrs)
+		trace.Add("evm", "multicall.aggregate3.summary", "contract reads were batched through Multicall3", attrs)
 	}
-	if lendingPositions == 0 && vaultPositions == 0 {
-		return
+	if compoundYieldPositions > 0 || compoundLendingPositions > 0 || compoundRewardPositions > 0 {
+		attrs := map[string]any{
+			"yieldPositions":   compoundYieldPositions,
+			"lendingPositions": compoundLendingPositions,
+			"rewardPositions":  compoundRewardPositions,
+			"collateralReads":  compoundCollateralReads,
+			"allowFailure":     "prices and rewards only",
+		}
+		trace.Add("adapter", "compound-v3.fetch.summary", "Compound V3 Comet position fetch stages completed", attrs)
+		trace.Add("evm", "multicall.aggregate3.summary", "Comet user, oracle, collateral and reward reads were batched", attrs)
 	}
-	attrs := map[string]any{
-		"lendingPositions": lendingPositions,
-		"vaultPositions":   vaultPositions,
-		"reserveReads":     reserveReads,
-		"allowFailure":     false,
-	}
-	trace.Add("adapter", "aave-v3.fetch.summary", "Aave V3 position fetch stages completed", attrs)
-	trace.Add("evm", "multicall.aggregate3.summary", "contract reads were batched through Multicall3", attrs)
 }
 
 func addAaveLendingTrace(trace *traceRecorder, position core.Position) {
@@ -609,6 +644,42 @@ func addAaveYieldTrace(trace *traceRecorder, position core.Position) {
 	}
 	trace.Add("adapter", "aave-v3.yield.fetch", "Vault balance and redeem preview reads", attrs)
 	trace.Add("evm", "multicall.aggregate3", "batch user yield reads", attrs)
+}
+
+func addCompoundTrace(trace *traceRecorder, position core.Position) {
+	strategy := extraString(position.Extra, "strategy")
+	if strategy == "" {
+		return
+	}
+	attrs := map[string]any{
+		"position":     position.DisplayName,
+		"strategy":     strategy,
+		"marketId":     extraString(position.Extra, "marketId"),
+		"comet":        extraString(position.Extra, "comet"),
+		"debankPoolId": extraString(position.Extra, "debankPoolId"),
+		"readMethods":  extraString(position.Extra, "readMethods"),
+		"allowFailure": compoundAllowFailure(strategy),
+	}
+	if strategy == "lending" {
+		attrs["collaterals"] = extraInt(position.Extra, "collateralCount")
+		attrs["isLiquidatable"] = extraString(position.Extra, "isLiquidatable")
+	} else if strategy == "reward" {
+		attrs["rewards"] = extraString(position.Extra, "rewards")
+		attrs["claimableRewardsCount"] = extraInt(position.Extra, "claimableRewardsCount")
+	}
+	trace.Add("adapter", "compound-v3."+strategy+".fetch", "Comet user position reads", attrs)
+	trace.Add("evm", "multicall.aggregate3", "batch Compound V3 "+strategy+" reads", attrs)
+}
+
+func compoundAllowFailure(strategy string) string {
+	switch strategy {
+	case "reward":
+		return "getRewardOwed"
+	case "yield", "lending":
+		return "getPrice"
+	default:
+		return "getPrice,getRewardOwed"
+	}
 }
 
 func writeMetadataDetail(out io.Writer, metadata []metadataSnapshot) {
@@ -736,11 +807,13 @@ func positionHealth(position core.Position) string {
 	if len(position.Extra) == 0 {
 		return "-"
 	}
-	value, ok := position.Extra["healthFactorFormatted"]
-	if !ok {
-		return "-"
+	for _, key := range []string{"healthFactorFormatted", "liquidationHealthFormatted"} {
+		value, ok := position.Extra[key]
+		if ok && strings.TrimSpace(fmt.Sprint(value)) != "" {
+			return fmt.Sprint(value)
+		}
 	}
-	return fmt.Sprint(value)
+	return "-"
 }
 
 func extraString(extra map[string]any, key string) string {

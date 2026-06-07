@@ -54,7 +54,7 @@ cmd/dpr
         -> []core.Position
 ```
 
-Fetcher 可以读取 Metadata Store 中已有的协议公共数据，再结合用户维度的链上状态生成 `Position`。当前 `demo` 协议为了离线演示，在没有缓存时会使用内置 fixture 数据；真实协议可以选择更严格的策略，例如 `aave-v3` 会要求 `markets`、`lending-reserves` 和 `yield-vaults` metadata 都存在且未过期，否则直接提示先运行 `sync-metadata`，避免静默漏资产。
+Fetcher 可以读取 Metadata Store 中已有的协议公共数据，再结合用户维度的链上状态生成 `Position`。当前 `demo` 协议为了离线演示，在没有缓存时会使用内置 fixture 数据；真实协议可以选择更严格的策略，例如 `aave-v3` 会要求 `markets`、`lending-reserves` 和 `yield-vaults` metadata 都存在且未过期，`compound-v3` 会要求 `markets`、`collateral-assets` 和 `reward-configs` metadata 都存在且未过期，否则直接提示先运行 `sync-metadata`，避免静默漏资产。
 
 ## 模块职责
 
@@ -69,6 +69,7 @@ Fetcher 可以读取 Metadata Store 中已有的协议公共数据，再结合�
 | `pkg/service` | 薄编排层，串联 Registry、Adapter 和 Metadata Store。 |
 | `protocols/demo` | 离线演示协议，用 fixture 跑通 metadata sync 和 position fetch 闭环。 |
 | `protocols/aavev3` | Aave V3 真实协议接入，支持 Lending 和 StataToken / static aToken Yield 仓位。 |
+| `protocols/compoundv3` | Compound V3 / Comet 真实协议接入，支持 base asset Yield、collateralized Lending 和 Reward 仓位。 |
 | `docs/blogs` | 技术博客，用来记录框架设计和后续协议接入过程。 |
 
 ## Adapter 接入规范
@@ -102,11 +103,12 @@ Protocol Registry 会根据 `chain` 和 `protocol` 筛选需要执行的 Adapter
 常见 metadata 示例：
 
 - Aave V3：market 列表、reserve 列表、aToken、variable debt token、stable debt token、StataToken / static aToken vault。
+- Compound V3：Comet market 列表、base asset、collateral asset、price feed、collateral factor、reward config。
 - Uniswap V2：factory、pair 列表、pair token0/token1。
 - Uniswap V3：position manager、factory、pool 配置、tick spacing。
 - Lido：stETH、wstETH、兑换关系和部署地址。
 
-缓存 key 按 `chainId / protocol / namespace` 组织。真实协议可以用 namespace 拆分不同数据集，例如 Aave V3 当前使用 `markets`、`lending-reserves` 和 `yield-vaults`。
+缓存 key 按 `chainId / protocol / namespace` 组织。真实协议可以用 namespace 拆分不同数据集，例如 Aave V3 当前使用 `markets`、`lending-reserves` 和 `yield-vaults`，Compound V3 当前使用 `markets`、`collateral-assets` 和 `reward-configs`。
 
 ### PositionFetcher
 

@@ -316,7 +316,7 @@ func TestFetcherFetchesLendingAndYieldPositions(t *testing.T) {
 		t.Fatalf("unexpected extra: %#v", position.Extra)
 	}
 
-	yieldPosition := findPositionByType(t, positions, core.PositionTypeVault)
+	yieldPosition := findPositionByType(t, positions, core.PositionTypeYield)
 	if yieldPosition.DisplayName != "Aave V3 Base Core Yield USDC" {
 		t.Fatalf("unexpected yield display name: %#v", yieldPosition)
 	}

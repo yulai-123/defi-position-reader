@@ -135,6 +135,67 @@ func TestRunPositionsTableFormat(t *testing.T) {
 	}
 }
 
+func TestWritePositionsTableShowsRewardPosition(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	positions := []core.Position{
+		{
+			Type:        core.PositionTypeReward,
+			Protocol:    "compound-v3",
+			DisplayName: "Compound V3 Base USDC Rewards",
+			Underlying: []core.TokenAmount{
+				{
+					Token:     core.Token{Symbol: "COMP", Decimals: 18},
+					Raw:       "42000000000000000",
+					Formatted: "0.042",
+				},
+			},
+		},
+	}
+	if err := writePositionsTable(&out, core.Chain{ID: 8453, DisplayName: "Base"}, "0x1", positions); err != nil {
+		t.Fatalf("write positions table: %v", err)
+	}
+	output := out.String()
+	if !strings.Contains(output, "reward") || !strings.Contains(output, "Compound V3 Base USDC Rewards") || !strings.Contains(output, "0.042 COMP") {
+		t.Fatalf("unexpected reward table output: %s", output)
+	}
+}
+
+func TestWritePositionsTableShowsYieldUnderlying(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	positions := []core.Position{
+		{
+			Type:        core.PositionTypeYield,
+			Protocol:    "compound-v3",
+			DisplayName: "Compound V3 Base USDC Yield",
+			Shares: []core.TokenAmount{
+				{
+					Token:     core.Token{Symbol: "cUSDCv3", Decimals: 6},
+					Raw:       "1500000",
+					Formatted: "1.5",
+				},
+			},
+			Underlying: []core.TokenAmount{
+				{
+					Token:     core.Token{Symbol: "USDC", Decimals: 6},
+					Raw:       "1500000",
+					Formatted: "1.5",
+				},
+			},
+		},
+	}
+	if err := writePositionsTable(&out, core.Chain{ID: 8453, DisplayName: "Base"}, "0x1", positions); err != nil {
+		t.Fatalf("write positions table: %v", err)
+	}
+	output := out.String()
+	if !strings.Contains(output, "yield") || !strings.Contains(output, "1.5 cUSDCv3") || !strings.Contains(output, "1.5 USDC") {
+		t.Fatalf("unexpected yield table output: %s", output)
+	}
+}
+
 func TestRunPositionsDetailTrace(t *testing.T) {
 	t.Parallel()
 

@@ -451,7 +451,7 @@ func fetchYieldPositions(
 			ChainID:     chainID,
 			Protocol:    ProtocolID,
 			Owner:       owner,
-			Type:        core.PositionTypeVault,
+			Type:        core.PositionTypeYield,
 			DisplayName: displayName,
 			Shares: []core.TokenAmount{
 				tokenAmount(vault.VaultToken, item.balance),

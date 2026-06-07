@@ -136,4 +136,4 @@ type Position struct {
 
 DeFi 协议资产读取的框架骨架并不复杂：通过 MetadataSyncer 维护协议公共数据，再由 Fetcher 读取用户仓位，并解析成统一的 Position 结果。真正复杂的是不同协议的仓位模型差异，以及从凭证、池子状态、协议配置到最终底层 Token 的穿透计算过程。
 
-这个项目会先保持轻量，重点跑通 EVM 协议资产读取的核心链路。当前已经可以在同一套 Adapter、Metadata Store 和 Position 模型上接入真实协议，例如 Aave V3；后续继续接入 Lido、Uniswap V2 / V3、Compound V3 等协议时，也可以沿用这套结构，并逐步把每个资产的解析路径展示出来。
+这个项目会先保持轻量，重点跑通 EVM 协议资产读取的核心链路。当前已经可以在同一套 Adapter、Metadata Store 和 Position 模型上接入真实协议，例如 Aave V3 和 Compound V3；后续继续接入 Lido、Uniswap V2 / V3、Sky 等协议时，也可以沿用这套结构，并逐步把每个资产的解析路径展示出来。

@@ -94,11 +94,11 @@ table 输出聚焦资产展示：
 
 | 字段 | 含义 |
 | --- | --- |
-| `TYPE` | Position 类型，例如 `lending` 或 `vault` |
-| `SUPPLY/SHARES` | Lending 的供应资产，或 Vault 的份额凭证 |
-| `UNDERLYING` | Vault share 穿透后的底层资产；Lending 中通常省略为 `-` |
+| `TYPE` | Position 类型，例如 `lending`、`yield`、`reward` |
+| `SUPPLY/SHARES` | Lending 的供应资产，或 Yield 的份额凭证 |
+| `UNDERLYING` | Yield share 穿透后的底层资产；Lending 中通常省略为 `-` |
 | `DEBT` | 借贷类协议中的当前债务 |
-| `HEALTH` | Aave V3 Lending 的 health factor |
+| `HEALTH` | 借贷仓位健康度，例如 Aave V3 health factor 或 Compound V3 liquidation health |
 
 ### 5. 排查底层链路
 
@@ -106,7 +106,7 @@ table 输出聚焦资产展示：
 dpr positions -chain base -protocol aave-v3 -address 0x... -format detail -trace -trace-level calls
 ```
 
-detail 输出会展开每个 Position 的 `Extra`，trace 会展示 cache 读取、metadata freshness、Aave V3 fetch 摘要和 Multicall3 批量调用摘要。
+detail 输出会展开每个 Position 的 `Extra`，trace 会展示 cache 读取、metadata freshness、协议 fetch 摘要和 Multicall3 批量调用摘要。
 
 ## 输出模式
 
@@ -128,8 +128,8 @@ Trace 是观测信息，不参与仓位计算，开启 trace 不应该改变业�
 
 | Level | 当前行为 |
 | --- | --- |
-| `summary` | 展示 CLI 请求、metadata cache 状态、service 汇总和 Aave V3 阶段摘要 |
-| `calls` | 展开 sync discovery step 和 Aave V3 lending / yield fetch 摘要 |
+| `summary` | 展示 CLI 请求、metadata cache 状态、service 汇总和协议阶段摘要 |
+| `calls` | 展开 sync discovery step 和 Aave V3 / Compound V3 fetch 摘要 |
 | `raw` | 保留级别，当前不输出 calldata / return data |
 
 当前 trace 主要由 CLI 根据 metadata snapshot、`SyncResult.Details` 和 `Position.Extra` 生成。后续如果需要跨协议统一的逐调用 trace，可以把 collector 下沉到 service、adapter 和 `pkg/evm`。
@@ -150,7 +150,7 @@ Trace 是观测信息，不参与仓位计算，开启 trace 不应该改变业�
 
 ### Yield
 
-`fetchYieldPositions` 会为每个有余额的 vault 输出一个 vault position：
+`fetchYieldPositions` 会为每个有余额的 vault 输出一个 yield position：
 
 | Position 字段 | Aave V3 来源 |
 | --- | --- |

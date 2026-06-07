@@ -1,0 +1,134 @@
+[
+  {
+    "id": "ethereum-usdc-yield-holder-1",
+    "chain": "ethereum",
+    "strategy": "yield",
+    "owner": "0x7f714b13249bed8fde2ef3fbdfb18ed525544b03",
+    "debankPool": "https://debank.com/protocols/pool/0xc3d688b66703497daa19211eedff47f25384cdc3:yield/eth/holders",
+    "expectedPositionTypes": ["yield"],
+    "expectedSymbols": ["USDC"],
+    "sourceCheckedAt": "2026-06-07",
+    "notes": "DeBank Compound V3 Ethereum USDC yield top holder."
+  },
+  {
+    "id": "ethereum-usdc-yield-holder-2",
+    "chain": "ethereum",
+    "strategy": "yield",
+    "owner": "0x3d6eef6a92b15361697698695334e98c5db91d6b",
+    "debankPool": "https://debank.com/protocols/pool/0xc3d688b66703497daa19211eedff47f25384cdc3:yield/eth/holders",
+    "expectedPositionTypes": ["yield"],
+    "expectedSymbols": ["USDC"],
+    "sourceCheckedAt": "2026-06-07",
+    "notes": "DeBank Compound V3 Ethereum USDC yield top holder."
+  },
+  {
+    "id": "ethereum-usdc-lending-holder-1",
+    "chain": "ethereum",
+    "strategy": "lending",
+    "owner": "0x4093f559f38c4c87c280d64c85396f649c0d9987",
+    "debankPool": "https://debank.com/protocols/pool/0xc3d688b66703497daa19211eedff47f25384cdc3:lending/eth/holders",
+    "expectedPositionTypes": ["lending"],
+    "expectedSymbols": ["WBTC"],
+    "sourceCheckedAt": "2026-06-07",
+    "notes": "DeBank Compound V3 Ethereum USDC lending top holder with WBTC collateral."
+  },
+  {
+    "id": "ethereum-usdc-lending-holder-2",
+    "chain": "ethereum",
+    "strategy": "lending",
+    "owner": "0x7ba7f4773fa7890bad57879f0a1faa0edffb3520",
+    "debankPool": "https://debank.com/protocols/pool/0xc3d688b66703497daa19211eedff47f25384cdc3:lending/eth/holders",
+    "expectedPositionTypes": ["lending"],
+    "expectedSymbols": ["WBTC", "wstETH"],
+    "sourceCheckedAt": "2026-06-07",
+    "notes": "DeBank Compound V3 Ethereum USDC lending top holder with WBTC and wstETH collateral."
+  },
+  {
+    "id": "arbitrum-usdt-yield-holder-1",
+    "chain": "arbitrum",
+    "strategy": "yield",
+    "owner": "0xc7adfda3aa8525fea8fed6a02134297ffaca3463",
+    "debankPool": "https://debank.com/protocols/pool/0xd98be00b5d27fc98112bde293e487f8d4ca57d07:yield/arb/holders",
+    "expectedPositionTypes": ["yield"],
+    "expectedSymbols": ["USDT"],
+    "sourceCheckedAt": "2026-06-07",
+    "notes": "DeBank Compound V3 Arbitrum USDT yield top holder."
+  },
+  {
+    "id": "arbitrum-usdt-yield-holder-2",
+    "chain": "arbitrum",
+    "strategy": "yield",
+    "owner": "0x9c89f595f5515609ad61f6fda94beff85ae6600e",
+    "debankPool": "https://debank.com/protocols/pool/0xd98be00b5d27fc98112bde293e487f8d4ca57d07:yield/arb/holders",
+    "expectedPositionTypes": ["yield"],
+    "expectedSymbols": ["USDT"],
+    "sourceCheckedAt": "2026-06-07",
+    "notes": "DeBank Compound V3 Arbitrum USDT yield top holder."
+  },
+  {
+    "id": "arbitrum-usdc-lending-holder-1",
+    "chain": "arbitrum",
+    "strategy": "lending",
+    "owner": "0x96d419508c33a731d0931b94717368085bade9b4",
+    "debankPool": "https://debank.com/protocols/pool/0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf:lending/arb/holders",
+    "expectedPositionTypes": ["lending"],
+    "expectedSymbols": ["wstETH"],
+    "sourceCheckedAt": "2026-06-07",
+    "notes": "DeBank Compound V3 Arbitrum USDC lending top holder with wstETH collateral."
+  },
+  {
+    "id": "arbitrum-usdc-lending-holder-2",
+    "chain": "arbitrum",
+    "strategy": "lending",
+    "owner": "0x403d37c861fb54b8f37a3a1870abce335954840b",
+    "debankPool": "https://debank.com/protocols/pool/0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf:lending/arb/holders",
+    "expectedPositionTypes": ["lending"],
+    "expectedSymbols": ["WBTC"],
+    "sourceCheckedAt": "2026-06-07",
+    "notes": "DeBank Compound V3 Arbitrum USDC lending top holder with WBTC collateral."
+  },
+  {
+    "id": "base-usdc-yield-holder-1",
+    "chain": "base",
+    "strategy": "yield",
+    "owner": "0x457635d97604926d4d7bad2ed08fe166c7d94f6b",
+    "debankPool": "https://debank.com/protocols/pool/0xb125e6687d4313864e53df431d5425969c15eb2f:yield/base/holders",
+    "expectedPositionTypes": ["yield"],
+    "expectedSymbols": ["USDC"],
+    "sourceCheckedAt": "2026-06-07",
+    "notes": "DeBank Compound V3 Base USDC yield top holder."
+  },
+  {
+    "id": "base-usdc-yield-holder-2",
+    "chain": "base",
+    "strategy": "yield",
+    "owner": "0xa46680f63b905ddc4a5fc3038584328a04623314",
+    "debankPool": "https://debank.com/protocols/pool/0xb125e6687d4313864e53df431d5425969c15eb2f:yield/base/holders",
+    "expectedPositionTypes": ["yield"],
+    "expectedSymbols": ["USDC"],
+    "sourceCheckedAt": "2026-06-07",
+    "notes": "DeBank Compound V3 Base USDC yield top holder."
+  },
+  {
+    "id": "base-usdc-lending-holder-1",
+    "chain": "base",
+    "strategy": "lending",
+    "owner": "0x14e94b74b8488328a640825294d8275c0ae1dcb3",
+    "debankPool": "https://debank.com/protocols/pool/0xb125e6687d4313864e53df431d5425969c15eb2f:lending/base/holders",
+    "expectedPositionTypes": ["lending"],
+    "expectedSymbols": ["WETH", "cbBTC"],
+    "sourceCheckedAt": "2026-06-07",
+    "notes": "DeBank Compound V3 Base USDC lending top holder with WETH and cbBTC collateral."
+  },
+  {
+    "id": "base-usdc-lending-holder-2",
+    "chain": "base",
+    "strategy": "lending",
+    "owner": "0xb2703c0674534945ca0b88b5034483b3676d7dd0",
+    "debankPool": "https://debank.com/protocols/pool/0xb125e6687d4313864e53df431d5425969c15eb2f:lending/base/holders",
+    "expectedPositionTypes": ["lending"],
+    "expectedSymbols": ["cbBTC"],
+    "sourceCheckedAt": "2026-06-07",
+    "notes": "DeBank Compound V3 Base USDC lending top holder with cbBTC collateral."
+  }
+]

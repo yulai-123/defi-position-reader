@@ -16,7 +16,7 @@
     "strategy": "yield",
     "owner": "0xa484ab92fe32b143aee7019fc1502b1daa522d31",
     "debankPool": "https://debank.com/protocols/pool/0x7bc3485026ac48b6cf9baf0a377477fff5703af8/eth/holders",
-    "expectedPositionTypes": ["vault"],
+    "expectedPositionTypes": ["yield"],
     "expectedSymbols": ["waEthUSDT", "USDT"],
     "sourceCheckedAt": "2026-05-23",
     "notes": "Ethereum StataToken yield holder observed with waEthUSDT shares and USDT underlying."
@@ -50,7 +50,7 @@
     "strategy": "yield",
     "owner": "0xba1333333333a1ba1108e8412f11850a5c319ba9",
     "debankPool": "https://debank.com/protocols/pool/0xc768c589647798a6ee01a91fde98ef2ed046dbd6/base/holders",
-    "expectedPositionTypes": ["lending", "vault"],
+    "expectedPositionTypes": ["lending", "yield"],
     "expectedSymbols": ["waBasUSDC", "USDC", "waBasGHO", "waBasWETH", "waBaswstETH"],
     "sourceCheckedAt": "2026-05-23",
     "notes": "Base StataToken holder observed with multiple Aave V3 wrapped yield positions."
