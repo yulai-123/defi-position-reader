@@ -33,6 +33,7 @@ type FetchRequest struct {
 
 type SyncRequest struct {
 	Chain     core.Chain
+	Owner     string
 	Protocols []string
 }
 
@@ -113,6 +114,7 @@ func (s *PositionService) SyncMetadata(ctx context.Context, req SyncRequest) ([]
 		result, err := syncer.Sync(ctx, adapter.SyncRequest{
 			Chain: req.Chain,
 			Store: s.store,
+			Owner: strings.TrimSpace(req.Owner),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("sync metadata: protocol %q: %w", descriptor.ID, err)

@@ -19,6 +19,7 @@ import (
 	"github.com/yulai-123/defi-position-reader/protocols/aavev3"
 	"github.com/yulai-123/defi-position-reader/protocols/compoundv3"
 	"github.com/yulai-123/defi-position-reader/protocols/demo"
+	"github.com/yulai-123/defi-position-reader/protocols/uniswapv2"
 )
 
 const defaultCacheDir = ".dpr-cache"
@@ -97,6 +98,7 @@ func runSyncMetadata(ctx context.Context, args []string, out io.Writer) error {
 	fs.SetOutput(io.Discard)
 	chainName := fs.String("chain", "ethereum", "chain name: ethereum, arbitrum, base")
 	protocols := fs.String("protocol", "all", "protocol id or comma separated protocol ids")
+	owner := fs.String("address", "", "optional wallet address for protocols that support user-scoped metadata sync")
 	cacheDir := fs.String("cache-dir", defaultCacheDir, "metadata cache directory")
 	format := fs.String("format", "json", "output format: json, table, detail")
 	traceEnabled := fs.Bool("trace", false, "show execution trace")
@@ -130,6 +132,7 @@ func runSyncMetadata(ctx context.Context, args []string, out io.Writer) error {
 	trace.Add("cli", "sync-metadata.request", "starting metadata sync", map[string]any{
 		"chain":     target.Name,
 		"chainId":   target.ID,
+		"owner":     strings.TrimSpace(*owner),
 		"protocols": resolvedProtocols,
 		"cacheDir":  *cacheDir,
 		"format":    opts.Format,
@@ -137,6 +140,7 @@ func runSyncMetadata(ctx context.Context, args []string, out io.Writer) error {
 
 	result, err := positionService.SyncMetadata(ctx, service.SyncRequest{
 		Chain:     target,
+		Owner:     *owner,
 		Protocols: selectedProtocols,
 	})
 	if err != nil {
@@ -288,7 +292,7 @@ func defaultStore(cacheDir string) (*cache.SQLiteStore, error) {
 }
 
 func defaultRegistry() (*adapter.Registry, error) {
-	return adapter.NewRegistry(aavev3.New(), compoundv3.New(), demo.New())
+	return adapter.NewRegistry(aavev3.New(), compoundv3.New(), demo.New(), uniswapv2.New())
 }
 
 func resolveProtocolIDs(protocolIDs []string, target core.Chain) ([]string, error) {
@@ -348,7 +352,7 @@ func printUsage(out io.Writer) {
 	fmt.Fprintln(out, "Usage:")
 	fmt.Fprintln(out, "  dpr chains")
 	fmt.Fprintln(out, "  dpr protocols [-chain ethereum]")
-	fmt.Fprintln(out, "  dpr sync-metadata [-chain ethereum] [-protocol demo|aave-v3|compound-v3] [-cache-dir .dpr-cache] [-format json|table|detail] [-trace] [-trace-level summary|calls|raw]")
-	fmt.Fprintln(out, "  dpr positions -address 0x... [-chain ethereum] [-protocol demo|aave-v3|compound-v3] [-cache-dir .dpr-cache] [-metadata-max-age 24h] [-format json|table|detail] [-trace] [-trace-level summary|calls|raw]")
-	fmt.Fprintln(out, "  dpr explain [-chain ethereum] [-protocol demo|aave-v3|compound-v3] [-cache-dir .dpr-cache] [-format json|table|detail] [-trace] [-trace-level summary|calls|raw]")
+	fmt.Fprintln(out, "  dpr sync-metadata [-chain ethereum] [-protocol demo|aave-v3|compound-v3|uniswap-v2] [-address 0x...] [-cache-dir .dpr-cache] [-format json|table|detail] [-trace] [-trace-level summary|calls|raw]")
+	fmt.Fprintln(out, "  dpr positions -address 0x... [-chain ethereum] [-protocol demo|aave-v3|compound-v3|uniswap-v2] [-cache-dir .dpr-cache] [-metadata-max-age 24h] [-format json|table|detail] [-trace] [-trace-level summary|calls|raw]")
+	fmt.Fprintln(out, "  dpr explain [-chain ethereum] [-protocol demo|aave-v3|compound-v3|uniswap-v2] [-cache-dir .dpr-cache] [-format json|table|detail] [-trace] [-trace-level summary|calls|raw]")
 }

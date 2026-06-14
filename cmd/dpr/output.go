@@ -78,6 +78,7 @@ var knownMetadataNamespaces = map[string][]string{
 	"demo":        {"markets"},
 	"aave-v3":     {"markets", "lending-reserves", "yield-vaults"},
 	"compound-v3": {"markets", "collateral-assets", "reward-configs"},
+	"uniswap-v2":  {"markets", "pairs", "farming-pools"},
 }
 
 func parseOutputOptions(formatValue string, traceLevelValue string, trace bool) (outputOptions, error) {
@@ -568,6 +569,9 @@ func addPositionTraceSummary(trace *traceRecorder, positions []core.Position) {
 	compoundLendingPositions := 0
 	compoundRewardPositions := 0
 	compoundCollateralReads := 0
+	uniswapLiquidityPositions := 0
+	uniswapFarmingPositions := 0
+	uniswapRewardPositions := 0
 	for _, position := range positions {
 		switch position.Protocol {
 		case "aave-v3":
@@ -587,6 +591,17 @@ func addPositionTraceSummary(trace *traceRecorder, positions []core.Position) {
 				compoundCollateralReads += extraInt(position.Extra, "collateralCount")
 			case "reward":
 				compoundRewardPositions++
+			}
+		case "uniswap-v2":
+			switch extraString(position.Extra, "strategy") {
+			case "farming":
+				uniswapFarmingPositions++
+			case "farming-reward":
+				uniswapRewardPositions++
+			default:
+				if position.Type == core.PositionTypeLiquidity {
+					uniswapLiquidityPositions++
+				}
 			}
 		}
 	}
@@ -610,6 +625,16 @@ func addPositionTraceSummary(trace *traceRecorder, positions []core.Position) {
 		}
 		trace.Add("adapter", "compound-v3.fetch.summary", "Compound V3 Comet position fetch stages completed", attrs)
 		trace.Add("evm", "multicall.aggregate3.summary", "Comet user, oracle, collateral and reward reads were batched", attrs)
+	}
+	if uniswapLiquidityPositions > 0 || uniswapFarmingPositions > 0 || uniswapRewardPositions > 0 {
+		attrs := map[string]any{
+			"liquidityPositions": uniswapLiquidityPositions,
+			"farmingPositions":   uniswapFarmingPositions,
+			"rewardPositions":    uniswapRewardPositions,
+			"allowFailure":       "feeTo and rewards only",
+		}
+		trace.Add("adapter", "uniswap-v2.fetch.summary", "Uniswap V2 liquidity and farming position fetch stages completed", attrs)
+		trace.Add("evm", "multicall.aggregate3.summary", "LP balances, pair reserves and farming rewards were batched", attrs)
 	}
 }
 

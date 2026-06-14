@@ -35,7 +35,7 @@ dpr positions -chain base -protocol aave-v3 -address 0x... -format json
 | --- | --- | --- |
 | `dpr chains` | 列出内置链配置，包括 chain id、RPC env 和 public RPC fallback | JSON |
 | `dpr protocols [-chain]` | 列出已注册协议，或按链过滤 | JSON |
-| `dpr sync-metadata -chain <chain> -protocol <id>` | 运行协议公共 metadata 同步并写入 SQLite cache | `json` / `table` / `detail` / `trace` |
+| `dpr sync-metadata -chain <chain> -protocol <id> [-address <owner>]` | 运行协议公共 metadata 同步并写入 SQLite cache；部分协议可用 `-address` 做用户相关的轻量同步 | `json` / `table` / `detail` / `trace` |
 | `dpr explain -chain <chain> -protocol <id>` | 查看协议配置和 metadata cache 状态，不读取用户资产 | `json` / `table` / `detail` / `trace` |
 | `dpr positions -chain <chain> -protocol <id> -address <owner>` | 读取用户协议仓位；会先检查 metadata 是否存在且未过期 | `json` / `table` / `detail` / `trace` |
 
@@ -48,6 +48,8 @@ dpr positions -chain base -protocol aave-v3 -address 0x... -format json
 ```
 
 `raw` 目前是保留级别：CLI 接受该参数，但不会打印 calldata 或 return data。当前实际可用层级是 `summary` 和 `calls`。
+
+`sync-metadata -address` 是可选参数，目前主要用于 Uniswap V2 的 demo/test 场景：只发现某个用户地址相关的 Pair 和活跃 Farming pool；不传时仍按协议默认方式同步完整公共数据。
 
 ## 推荐工作流
 
@@ -75,6 +77,8 @@ dpr sync-metadata -chain base -protocol aave-v3 -format detail -trace
 | `yield-vaults` | StataToken / static aToken wrapper 信息 |
 
 detail 输出会展示 discovery 阶段；trace 输出会展示这些链上读取通过 Multicall3 批量完成。
+
+Uniswap V2 的 pair 数量较多，demo/test 时可以在这一步附带 `-address 0x...`，只同步该地址相关的 Pair；如果要避免漏资产，则保持默认全量同步。
 
 ### 3. 检查 cache 状态
 
@@ -129,7 +133,7 @@ Trace 是观测信息，不参与仓位计算，开启 trace 不应该改变业�
 | Level | 当前行为 |
 | --- | --- |
 | `summary` | 展示 CLI 请求、metadata cache 状态、service 汇总和协议阶段摘要 |
-| `calls` | 展开 sync discovery step 和 Aave V3 / Compound V3 fetch 摘要 |
+| `calls` | 展开 sync discovery step 和 Aave V3 / Compound V3 / Uniswap V2 fetch 摘要 |
 | `raw` | 保留级别，当前不输出 calldata / return data |
 
 当前 trace 主要由 CLI 根据 metadata snapshot、`SyncResult.Details` 和 `Position.Extra` 生成。后续如果需要跨协议统一的逐调用 trace，可以把 collector 下沉到 service、adapter 和 `pkg/evm`。

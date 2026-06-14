@@ -4,7 +4,7 @@ DeFi Position Reader 是一个用 Go 编写的轻量 DeFi 协议资产读取与�
 
 它关注的不是普通钱包余额，而是用户在 DeFi 协议里的仓位：LP 份额、Vault Share、借贷凭证、债务、质押记录、待赎回资产等。项目目标是用一套清晰、可运行、可测试的框架，逐步展示不同协议的链上仓位如何被读取，并尽量穿透到底层 Token。
 
-> 当前项目处于框架阶段，内置 `demo` 协议用于离线演示 metadata sync、cache 和 position fetch 闭环；`aave-v3` 支持 Lending 仓位和 ERC-4626 StataToken / static aToken Yield 仓位读取；`compound-v3` 支持 Compound III / Comet 的 base asset yield、collateralized lending 和 reward 仓位读取。
+> 当前项目处于框架阶段，内置 `demo` 协议用于离线演示 metadata sync、cache 和 position fetch 闭环；`aave-v3` 支持 Lending 仓位和 ERC-4626 StataToken / static aToken Yield 仓位读取；`compound-v3` 支持 Compound III / Comet 的 base asset yield、collateralized lending 和 reward 仓位读取；`uniswap-v2` 支持直接 LP 和 legacy UNI farming 仓位读取。
 
 ## 项目定位
 
@@ -43,6 +43,9 @@ pkg/cache/        metadata cache 接口和 SQLite 实现
 pkg/chain/        默认 EVM 链配置
 pkg/service/      薄编排层，串联 registry、adapter 和 metadata store
 protocols/demo/   离线演示协议，展示 metadata sync + position fetch 闭环
+protocols/aavev3/ Aave V3 真实协议接入
+protocols/compoundv3/ Compound V3 真实协议接入
+protocols/uniswapv2/ Uniswap V2 真实协议接入
 docs/architecture.md  架构速查
 docs/blogs/       技术博客
 docs/diagrams/    文档配图
@@ -64,6 +67,8 @@ go run ./cmd/dpr sync-metadata -chain base -protocol aave-v3
 go run ./cmd/dpr positions -chain base -protocol aave-v3 -address 0x...
 go run ./cmd/dpr sync-metadata -chain base -protocol compound-v3
 go run ./cmd/dpr positions -chain base -protocol compound-v3 -address 0x...
+go run ./cmd/dpr sync-metadata -chain ethereum -protocol uniswap-v2 -address 0x...
+go run ./cmd/dpr positions -chain ethereum -protocol uniswap-v2 -address 0x...
 ```
 
 也可以直接运行 demo 闭环：
@@ -72,7 +77,29 @@ go run ./cmd/dpr positions -chain base -protocol compound-v3 -address 0x...
 make run-demo
 ```
 
-当前 `demo` 协议使用内置 fixture 数据，不需要 RPC key；`aave-v3` 和 `compound-v3` 会读取链上合约，推荐按 `.env.example` 配置自有 RPC URL。未配置时会使用内置 public RPC fallback，但 public RPC 可能限流，稳定性不如自有节点。
+当前 `demo` 协议使用内置 fixture 数据，不需要 RPC key；`aave-v3`、`compound-v3` 和 `uniswap-v2` 会读取链上合约，推荐按 `.env.example` 配置自有 RPC URL。未配置时会使用内置 public RPC fallback，但 public RPC 可能限流，稳定性不如自有节点。
+
+Uniswap V2 的 factory pair 数量较大。默认 metadata sync 会从 factory 全量发现 pairs，避免漏掉冷门 LP：
+
+```bash
+go run ./cmd/dpr sync-metadata -chain ethereum -protocol uniswap-v2
+```
+
+轻量 demo/test 可以传入用户地址，只同步这个地址关联过的 Uniswap V2 pair，以及该地址活跃的 farming pool：
+
+```bash
+go run ./cmd/dpr sync-metadata -chain ethereum -protocol uniswap-v2 -address 0x...
+```
+
+该模式会优先使用 Alchemy 的 `alchemy_getAssetTransfers` 做用户相关 ERC20 transfer 发现，再验证哪些合约是 Uniswap V2 pair；非 Alchemy RPC 会回退到用户作为 `Transfer` 日志 from/to topic 的历史 `eth_getLogs`。很多公共 RPC 会限制这种查询，遇到限制时请配置支持该能力的 RPC，或使用默认全量同步。
+
+也可以用 `limited` 模式扫描 factory 前 N 个 pair，适合做 RPC 和输出 smoke test，但它不适合资产完整性校验：
+
+```bash
+DPR_UNISWAP_V2_DISCOVERY_MODE=limited \
+DPR_UNISWAP_V2_MAX_PAIRS=1000 \
+go run ./cmd/dpr sync-metadata -chain ethereum -protocol uniswap-v2
+```
 
 `positions` 会先检查 `sync-metadata` 产出的 metadata 是否存在且未过期，默认最大年龄是 `24h`。如果 metadata 缺失或过期，需要先运行：
 
@@ -145,12 +172,12 @@ go run ./cmd/dpr positions \
 | 类型 | 状态 |
 | --- | --- |
 | Chains | Ethereum, Arbitrum One, Base |
-| Protocols | `demo` fixture adapter, `aave-v3` Lending + Yield adapter, `compound-v3` Comet Yield + Lending + Reward adapter |
+| Protocols | `demo` fixture adapter, `aave-v3` Lending + Yield adapter, `compound-v3` Comet Yield + Lending + Reward adapter, `uniswap-v2` Liquidity + Farming adapter |
 | Cache | SQLite metadata store |
 | CLI | `chains`, `protocols`, `sync-metadata`, `positions`, `explain`; `sync-metadata` / `positions` / `explain` 支持 `-format json|table|detail` 和 `-trace` |
 | Tests | `go test ./...`；Aave V3 / Compound V3 live smoke tests 通过 `DPR_LIVE_TESTS=1` 显式开启 |
 
-Aave V3 接入流程图见 [docs/diagrams/aave-v3-integration-flow.png](./docs/diagrams/aave-v3-integration-flow.png)，Compound V3 资产模型图见 [docs/diagrams/compound-v3-comet-model.svg](./docs/diagrams/compound-v3-comet-model.svg)，测试计划见 [docs/testing/aave-v3-test-plan.md](./docs/testing/aave-v3-test-plan.md)，CLI 展示与 trace 设计见 [docs/cli-design.md](./docs/cli-design.md)。
+Aave V3 接入流程图见 [docs/diagrams/aave-v3-integration-flow.png](./docs/diagrams/aave-v3-integration-flow.png)，Compound V3 资产模型图见 [docs/diagrams/compound-v3-comet-model.svg](./docs/diagrams/compound-v3-comet-model.svg)，Uniswap V2 资产模型和计算链路见 [docs/diagrams/uniswap-v2-asset-model.png](./docs/diagrams/uniswap-v2-asset-model.png) 与 [docs/diagrams/uniswap-v2-position-calculation.png](./docs/diagrams/uniswap-v2-position-calculation.png)。测试计划见 [docs/testing/aave-v3-test-plan.md](./docs/testing/aave-v3-test-plan.md)，CLI 展示与 trace 设计见 [docs/cli-design.md](./docs/cli-design.md)。
 
 ## 协议接入路线
 
@@ -158,18 +185,19 @@ Aave V3 接入流程图见 [docs/diagrams/aave-v3-integration-flow.png](./docs/d
 
 - Lido：staking / wrapper 类资产，适合展示 stETH、wstETH 与底层 ETH 的关系。
 - Aave V3：借贷协议，适合展示 reserve metadata、aToken、debt token、underlying、debt 和 ERC-4626 yield vault。当前已支持 Lending 和 Yield；staked AAVE / Safety Module 暂不作为主线。
-- Uniswap V2：经典 LP Token，适合展示池子储备和份额换算。
+- Uniswap V2：经典 LP Token，适合展示池子储备和份额换算。当前已支持直接 LP 和 legacy UNI farming；Airdrop 不作为主线。
 - Uniswap V3：NFT LP 仓位，适合展示 tick、liquidity 和底层资产估算。
 - Compound V3：单一基础资产借贷模型，当前已支持 Ethereum、Arbitrum One、Base 的 Comet yield / lending / reward 仓位。
 - Sky：MakerDAO / Sky 生态资产，适合展示稳定币、储蓄和协议特定状态。
 
-建议后续接入顺序是：Lido -> Uniswap V2 -> Uniswap V3 -> Sky。这样可以从简单凭证型资产，逐步过渡到 LP、NFT LP 和更复杂的协议状态。
+建议后续接入顺序是：Lido -> Uniswap V3 -> Sky。这样可以从简单凭证型资产，逐步过渡到 NFT LP 和更复杂的协议状态。
 
 ## 技术博客
 
 - [000 - DeFi 资产读取与解析：框架介绍](./docs/blogs/000-defi-asset-position-framework.md)
 - [001 - DeFi 资产读取与解析：Aave V3 协议接入](./docs/blogs/001-aave-v3-protocol-integration.md)
 - [002 - DeFi 资产读取与解析：Compound V3 协议接入](./docs/blogs/002-compound-v3-protocol-integration.md)
+- [003 - DeFi 资产读取与解析：Uniswap V2 协议接入](./docs/blogs/003-uniswap-v2-protocol-integration.md)
 
 后续每接入一个真实协议，都会补充对应的协议资产解析文章。
 

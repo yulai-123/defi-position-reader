@@ -17,6 +17,7 @@ type Adapter interface {
 type SyncRequest struct {
 	Chain core.Chain
 	Store cache.Store
+	Owner string
 }
 
 type SyncResult struct {
