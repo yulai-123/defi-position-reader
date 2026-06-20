@@ -79,6 +79,7 @@ var knownMetadataNamespaces = map[string][]string{
 	"aave-v3":     {"markets", "lending-reserves", "yield-vaults"},
 	"compound-v3": {"markets", "collateral-assets", "reward-configs"},
 	"uniswap-v2":  {"markets", "pairs", "farming-pools"},
+	"uniswap-v3":  {"markets", "pools"},
 }
 
 func parseOutputOptions(formatValue string, traceLevelValue string, trace bool) (outputOptions, error) {
@@ -244,14 +245,15 @@ func writePositionsTable(out io.Writer, target core.Chain, owner string, positio
 	}
 
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(tw, "TYPE\tPROTOCOL\tNAME\tSUPPLY/SHARES\tUNDERLYING\tDEBT\tHEALTH")
+	fmt.Fprintln(tw, "TYPE\tPROTOCOL\tNAME\tSUPPLY/SHARES\tUNDERLYING\tREWARDS\tDEBT\tHEALTH")
 	for _, position := range positions {
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			position.Type,
 			position.Protocol,
 			position.DisplayName,
 			summaryPrimaryAmounts(position),
 			summaryUnderlyingAmounts(position),
+			formatAmounts(position.Rewards),
 			formatAmounts(position.Debt),
 			positionHealth(position),
 		)
@@ -275,6 +277,8 @@ func writePositionsDetail(out io.Writer, target core.Chain, owner string, positi
 		writeAmountLines(out, "    ", position.Shares)
 		fmt.Fprintf(out, "  Underlying:\n")
 		writeAmountLines(out, "    ", position.Underlying)
+		fmt.Fprintf(out, "  Rewards:\n")
+		writeAmountLines(out, "    ", position.Rewards)
 		fmt.Fprintf(out, "  Debt:\n")
 		writeAmountLines(out, "    ", position.Debt)
 		if len(position.Extra) > 0 {
@@ -572,6 +576,8 @@ func addPositionTraceSummary(trace *traceRecorder, positions []core.Position) {
 	uniswapLiquidityPositions := 0
 	uniswapFarmingPositions := 0
 	uniswapRewardPositions := 0
+	uniswapV3LiquidityPositions := 0
+	uniswapV3RewardTokens := 0
 	for _, position := range positions {
 		switch position.Protocol {
 		case "aave-v3":
@@ -602,6 +608,11 @@ func addPositionTraceSummary(trace *traceRecorder, positions []core.Position) {
 				if position.Type == core.PositionTypeLiquidity {
 					uniswapLiquidityPositions++
 				}
+			}
+		case "uniswap-v3":
+			if position.Type == core.PositionTypeLiquidity {
+				uniswapV3LiquidityPositions++
+				uniswapV3RewardTokens += len(position.Rewards)
 			}
 		}
 	}
@@ -635,6 +646,15 @@ func addPositionTraceSummary(trace *traceRecorder, positions []core.Position) {
 		}
 		trace.Add("adapter", "uniswap-v2.fetch.summary", "Uniswap V2 liquidity and farming position fetch stages completed", attrs)
 		trace.Add("evm", "multicall.aggregate3.summary", "LP balances, pair reserves and farming rewards were batched", attrs)
+	}
+	if uniswapV3LiquidityPositions > 0 {
+		attrs := map[string]any{
+			"liquidityPositions": uniswapV3LiquidityPositions,
+			"rewardTokens":       uniswapV3RewardTokens,
+			"allowFailure":       false,
+		}
+		trace.Add("adapter", "uniswap-v3.fetch.summary", "Uniswap V3 NFT liquidity positions and fees were fetched", attrs)
+		trace.Add("evm", "multicall.aggregate3.summary", "NFT positions, pool state and tick fee growth were batched", attrs)
 	}
 }
 

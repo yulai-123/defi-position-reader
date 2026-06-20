@@ -65,6 +65,7 @@ type Position struct {
 	DisplayName string         `json:"displayName"`
 	Shares      []TokenAmount  `json:"shares,omitempty"`
 	Underlying  []TokenAmount  `json:"underlying,omitempty"`
+	Rewards     []TokenAmount  `json:"rewards,omitempty"`
 	Debt        []TokenAmount  `json:"debt,omitempty"`
 	Extra       map[string]any `json:"extra,omitempty"`
 }

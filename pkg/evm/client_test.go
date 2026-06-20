@@ -111,3 +111,55 @@ func TestClientCallContractReturnsJoinedError(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestClientFilterLogsIncludesAddressAndData(t *testing.T) {
+	t.Parallel()
+
+	address := common.HexToAddress("0x00000000000000000000000000000000000000aa")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req rpcRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+		if req.Method != "eth_getLogs" || len(req.Params) != 1 {
+			t.Fatalf("unexpected request: %#v", req)
+		}
+		params, ok := req.Params[0].(map[string]any)
+		if !ok {
+			t.Fatalf("unexpected params type: %#v", req.Params[0])
+		}
+		if params["address"] != address.Hex() {
+			t.Fatalf("expected address filter %s, got %#v", address.Hex(), params["address"])
+		}
+		_, _ = w.Write([]byte(`{
+			"jsonrpc":"2.0",
+			"id":1,
+			"result":[{
+				"address":"0x00000000000000000000000000000000000000aa",
+				"topics":["0x0000000000000000000000000000000000000000000000000000000000000001"],
+				"data":"0x1234",
+				"blockNumber":"0x10",
+				"transactionHash":"0x000000000000000000000000000000000000000000000000000000000000abcd",
+				"logIndex":"0x2"
+			}]
+		}`))
+	}))
+	t.Cleanup(server.Close)
+
+	client, err := NewClient(server.URL)
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+	logs, err := client.FilterLogs(context.Background(), LogQuery{
+		FromBlock: 1,
+		ToBlock:   20,
+		Addresses: []common.Address{address},
+		Topics:    []any{"0x1"},
+	})
+	if err != nil {
+		t.Fatalf("filter logs: %v", err)
+	}
+	if len(logs) != 1 || logs[0].Address != address || logs[0].BlockNumber != 16 || logs[0].LogIndex != 2 || string(logs[0].Data) != "\x12\x34" {
+		t.Fatalf("unexpected logs: %#v", logs)
+	}
+}

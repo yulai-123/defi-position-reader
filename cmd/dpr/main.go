@@ -20,6 +20,7 @@ import (
 	"github.com/yulai-123/defi-position-reader/protocols/compoundv3"
 	"github.com/yulai-123/defi-position-reader/protocols/demo"
 	"github.com/yulai-123/defi-position-reader/protocols/uniswapv2"
+	"github.com/yulai-123/defi-position-reader/protocols/uniswapv3"
 )
 
 const defaultCacheDir = ".dpr-cache"
@@ -292,7 +293,7 @@ func defaultStore(cacheDir string) (*cache.SQLiteStore, error) {
 }
 
 func defaultRegistry() (*adapter.Registry, error) {
-	return adapter.NewRegistry(aavev3.New(), compoundv3.New(), demo.New(), uniswapv2.New())
+	return adapter.NewRegistry(aavev3.New(), compoundv3.New(), demo.New(), uniswapv2.New(), uniswapv3.New())
 }
 
 func resolveProtocolIDs(protocolIDs []string, target core.Chain) ([]string, error) {
@@ -352,7 +353,7 @@ func printUsage(out io.Writer) {
 	fmt.Fprintln(out, "Usage:")
 	fmt.Fprintln(out, "  dpr chains")
 	fmt.Fprintln(out, "  dpr protocols [-chain ethereum]")
-	fmt.Fprintln(out, "  dpr sync-metadata [-chain ethereum] [-protocol demo|aave-v3|compound-v3|uniswap-v2] [-address 0x...] [-cache-dir .dpr-cache] [-format json|table|detail] [-trace] [-trace-level summary|calls|raw]")
-	fmt.Fprintln(out, "  dpr positions -address 0x... [-chain ethereum] [-protocol demo|aave-v3|compound-v3|uniswap-v2] [-cache-dir .dpr-cache] [-metadata-max-age 24h] [-format json|table|detail] [-trace] [-trace-level summary|calls|raw]")
-	fmt.Fprintln(out, "  dpr explain [-chain ethereum] [-protocol demo|aave-v3|compound-v3|uniswap-v2] [-cache-dir .dpr-cache] [-format json|table|detail] [-trace] [-trace-level summary|calls|raw]")
+	fmt.Fprintln(out, "  dpr sync-metadata [-chain ethereum] [-protocol demo|aave-v3|compound-v3|uniswap-v2|uniswap-v3] [-address 0x...] [-cache-dir .dpr-cache] [-format json|table|detail] [-trace] [-trace-level summary|calls|raw]")
+	fmt.Fprintln(out, "  dpr positions -address 0x... [-chain ethereum] [-protocol demo|aave-v3|compound-v3|uniswap-v2|uniswap-v3] [-cache-dir .dpr-cache] [-metadata-max-age 24h] [-format json|table|detail] [-trace] [-trace-level summary|calls|raw]")
+	fmt.Fprintln(out, "  dpr explain [-chain ethereum] [-protocol demo|aave-v3|compound-v3|uniswap-v2|uniswap-v3] [-cache-dir .dpr-cache] [-format json|table|detail] [-trace] [-trace-level summary|calls|raw]")
 }

@@ -75,6 +75,9 @@ func TestRunProtocolsFiltersByChain(t *testing.T) {
 	if !strings.Contains(out.String(), `"id": "demo"`) {
 		t.Fatalf("protocols output missing demo: %s", out.String())
 	}
+	if !strings.Contains(out.String(), `"id": "uniswap-v3"`) {
+		t.Fatalf("protocols output missing uniswap-v3: %s", out.String())
+	}
 }
 
 func TestRunSyncMetadata(t *testing.T) {
@@ -159,6 +162,35 @@ func TestWritePositionsTableShowsRewardPosition(t *testing.T) {
 	output := out.String()
 	if !strings.Contains(output, "reward") || !strings.Contains(output, "Compound V3 Base USDC Rewards") || !strings.Contains(output, "0.042 COMP") {
 		t.Fatalf("unexpected reward table output: %s", output)
+	}
+}
+
+func TestWritePositionsTableShowsInlineRewards(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	positions := []core.Position{
+		{
+			Type:        core.PositionTypeLiquidity,
+			Protocol:    "uniswap-v3",
+			DisplayName: "Uniswap V3 WETH / USDC 0.05% LP",
+			Shares: []core.TokenAmount{
+				{Token: core.Token{Symbol: "UNI-V3-POS"}, Raw: "1", Formatted: "1"},
+			},
+			Underlying: []core.TokenAmount{
+				{Token: core.Token{Symbol: "WETH"}, Raw: "10", Formatted: "10"},
+			},
+			Rewards: []core.TokenAmount{
+				{Token: core.Token{Symbol: "USDC"}, Raw: "42", Formatted: "42"},
+			},
+		},
+	}
+	if err := writePositionsTable(&out, core.Chain{ID: 1, DisplayName: "Ethereum"}, "0x1", positions); err != nil {
+		t.Fatalf("write positions table: %v", err)
+	}
+	output := out.String()
+	if !strings.Contains(output, "REWARDS") || !strings.Contains(output, "42 USDC") {
+		t.Fatalf("unexpected inline rewards table output: %s", output)
 	}
 }
 

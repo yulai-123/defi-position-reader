@@ -49,7 +49,7 @@ dpr positions -chain base -protocol aave-v3 -address 0x... -format json
 
 `raw` 目前是保留级别：CLI 接受该参数，但不会打印 calldata 或 return data。当前实际可用层级是 `summary` 和 `calls`。
 
-`sync-metadata -address` 是可选参数，目前主要用于 Uniswap V2 的 demo/test 场景：只发现某个用户地址相关的 Pair 和活跃 Farming pool；不传时仍按协议默认方式同步完整公共数据。
+`sync-metadata -address` 是可选参数，目前主要用于 Uniswap V2 / V3 的 demo/test 场景：V2 只发现某个用户地址相关的 Pair 和活跃 Farming pool；V3 只发现该地址当前持有的 `UNI-V3-POS` NFT 关联的 pools。不传时仍按协议默认方式同步完整公共数据。
 
 ## 推荐工作流
 
@@ -80,6 +80,8 @@ detail 输出会展示 discovery 阶段；trace 输出会展示这些链上读�
 
 Uniswap V2 的 pair 数量较多，demo/test 时可以在这一步附带 `-address 0x...`，只同步该地址相关的 Pair；如果要避免漏资产，则保持默认全量同步。
 
+Uniswap V3 默认从 Factory 的 `PoolCreated` 日志全量同步 pools；demo/test 时也可以附带 `-address 0x...`，只同步该地址当前持有的 NFT position 关联的 pools。
+
 ### 3. 检查 cache 状态
 
 ```bash
@@ -101,6 +103,7 @@ table 输出聚焦资产展示：
 | `TYPE` | Position 类型，例如 `lending`、`yield`、`reward` |
 | `SUPPLY/SHARES` | Lending 的供应资产，或 Yield 的份额凭证 |
 | `UNDERLYING` | Yield share 穿透后的底层资产；Lending 中通常省略为 `-` |
+| `REWARDS` | 仓位已产生但尚未领取的奖励或费用，例如 Uniswap V3 LP swap fee |
 | `DEBT` | 借贷类协议中的当前债务 |
 | `HEALTH` | 借贷仓位健康度，例如 Aave V3 health factor 或 Compound V3 liquidation health |
 
@@ -133,7 +136,7 @@ Trace 是观测信息，不参与仓位计算，开启 trace 不应该改变业�
 | Level | 当前行为 |
 | --- | --- |
 | `summary` | 展示 CLI 请求、metadata cache 状态、service 汇总和协议阶段摘要 |
-| `calls` | 展开 sync discovery step 和 Aave V3 / Compound V3 / Uniswap V2 fetch 摘要 |
+| `calls` | 展开 sync discovery step 和 Aave V3 / Compound V3 / Uniswap V2 / Uniswap V3 fetch 摘要 |
 | `raw` | 保留级别，当前不输出 calldata / return data |
 
 当前 trace 主要由 CLI 根据 metadata snapshot、`SyncResult.Details` 和 `Position.Extra` 生成。后续如果需要跨协议统一的逐调用 trace，可以把 collector 下沉到 service、adapter 和 `pkg/evm`。

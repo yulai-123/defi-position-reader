@@ -54,7 +54,7 @@ cmd/dpr
         -> []core.Position
 ```
 
-Fetcher 可以读取 Metadata Store 中已有的协议公共数据，再结合用户维度的链上状态生成 `Position`。当前 `demo` 协议为了离线演示，在没有缓存时会使用内置 fixture 数据；真实协议可以选择更严格的策略，例如 `aave-v3` 会要求 `markets`、`lending-reserves` 和 `yield-vaults` metadata 都存在且未过期，`compound-v3` 会要求 `markets`、`collateral-assets` 和 `reward-configs` metadata 都存在且未过期，`uniswap-v2` 会要求 `markets`、`pairs` 和 `farming-pools` metadata 都存在且未过期，否则直接提示先运行 `sync-metadata`，避免静默漏资产。
+Fetcher 可以读取 Metadata Store 中已有的协议公共数据，再结合用户维度的链上状态生成 `Position`。当前 `demo` 协议为了离线演示，在没有缓存时会使用内置 fixture 数据；真实协议可以选择更严格的策略，例如 `aave-v3` 会要求 `markets`、`lending-reserves` 和 `yield-vaults` metadata 都存在且未过期，`compound-v3` 会要求 `markets`、`collateral-assets` 和 `reward-configs` metadata 都存在且未过期，`uniswap-v2` 会要求 `markets`、`pairs` 和 `farming-pools` metadata 都存在且未过期，`uniswap-v3` 会要求 `markets` 和 `pools` metadata 都存在且未过期，否则直接提示先运行 `sync-metadata`，避免静默漏资产。
 
 ## 模块职责
 
@@ -71,6 +71,7 @@ Fetcher 可以读取 Metadata Store 中已有的协议公共数据，再结合�
 | `protocols/aavev3` | Aave V3 真实协议接入，支持 Lending 和 StataToken / static aToken Yield 仓位。 |
 | `protocols/compoundv3` | Compound V3 / Comet 真实协议接入，支持 base asset Yield、collateralized Lending 和 Reward 仓位。 |
 | `protocols/uniswapv2` | Uniswap V2 真实协议接入，支持直接 LP、Farming 和 Reward 仓位。 |
+| `protocols/uniswapv3` | Uniswap V3 真实协议接入，支持集中流动性 NFT LP 本金和未领取 swap fee。 |
 | `docs/blogs` | 技术博客，用来记录框架设计和后续协议接入过程。 |
 
 ## Adapter 接入规范
@@ -106,10 +107,10 @@ Protocol Registry 会根据 `chain` 和 `protocol` 筛选需要执行的 Adapter
 - Aave V3：market 列表、reserve 列表、aToken、variable debt token、stable debt token、StataToken / static aToken vault。
 - Compound V3：Comet market 列表、base asset、collateral asset、price feed、collateral factor、reward config。
 - Uniswap V2：factory、pair 列表、pair token0/token1、farming pool 配置。
-- Uniswap V3：position manager、factory、pool 配置、tick spacing。
+- Uniswap V3：position manager、factory、PoolCreated 发现的 pool 列表、fee tier、tick spacing。
 - Lido：stETH、wstETH、兑换关系和部署地址。
 
-缓存 key 按 `chainId / protocol / namespace` 组织。真实协议可以用 namespace 拆分不同数据集，例如 Aave V3 当前使用 `markets`、`lending-reserves` 和 `yield-vaults`，Compound V3 当前使用 `markets`、`collateral-assets` 和 `reward-configs`，Uniswap V2 当前使用 `markets`、`pairs` 和 `farming-pools`。
+缓存 key 按 `chainId / protocol / namespace` 组织。真实协议可以用 namespace 拆分不同数据集，例如 Aave V3 当前使用 `markets`、`lending-reserves` 和 `yield-vaults`，Compound V3 当前使用 `markets`、`collateral-assets` 和 `reward-configs`，Uniswap V2 当前使用 `markets`、`pairs` 和 `farming-pools`，Uniswap V3 当前使用 `markets` 和 `pools`。
 
 ### PositionFetcher
 
@@ -137,6 +138,7 @@ type Position struct {
 	DisplayName string
 	Shares      []TokenAmount
 	Underlying  []TokenAmount
+	Rewards     []TokenAmount
 	Debt        []TokenAmount
 	Extra       map[string]any
 }
@@ -146,6 +148,7 @@ type Position struct {
 
 - `Shares`：用户持有的份额或凭证，例如 LP Token、aToken、Vault Share、NFT 代表的流动性份额。
 - `Underlying`：该仓位穿透后对应的底层资产。
+- `Rewards`：该仓位已产生但尚未领取的奖励或费用，例如 Uniswap V3 LP NFT 内生 swap fee。
 - `Debt`：借贷类协议中的债务资产。
 - `Extra`：协议特定扩展信息，适合放 market id、pool id、token id、health factor 等非通用字段。
 

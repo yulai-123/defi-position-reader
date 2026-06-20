@@ -25,12 +25,17 @@ type ContractCaller interface {
 type LogQuery struct {
 	FromBlock uint64
 	ToBlock   uint64
+	Addresses []common.Address
 	Topics    []any
 }
 
 type Log struct {
-	Address common.Address
-	Topics  []common.Hash
+	Address     common.Address
+	Topics      []common.Hash
+	Data        []byte
+	BlockNumber uint64
+	TxHash      common.Hash
+	LogIndex    uint64
 }
 
 type AssetTransferQuery struct {
@@ -264,6 +269,21 @@ func (c *Client) filterLogsOnce(ctx context.Context, rpcURL string, query LogQue
 	if len(query.Topics) > 0 {
 		filter["topics"] = query.Topics
 	}
+	if len(query.Addresses) == 1 {
+		filter["address"] = query.Addresses[0].Hex()
+	} else if len(query.Addresses) > 1 {
+		addresses := make([]string, 0, len(query.Addresses))
+		for _, address := range query.Addresses {
+			if address != (common.Address{}) {
+				addresses = append(addresses, address.Hex())
+			}
+		}
+		if len(addresses) == 1 {
+			filter["address"] = addresses[0]
+		} else if len(addresses) > 1 {
+			filter["address"] = addresses
+		}
+	}
 	encoded, err := json.Marshal(rpcRequest{
 		JSONRPC: "2.0",
 		ID:      1,
@@ -296,8 +316,12 @@ func (c *Client) filterLogsOnce(ctx context.Context, rpcURL string, query LogQue
 			topics = append(topics, common.HexToHash(topic))
 		}
 		logs = append(logs, Log{
-			Address: common.HexToAddress(item.Address),
-			Topics:  topics,
+			Address:     common.HexToAddress(item.Address),
+			Topics:      topics,
+			Data:        common.FromHex(item.Data),
+			BlockNumber: decodeOptionalHexUint64(item.BlockNumber),
+			TxHash:      common.HexToHash(item.TxHash),
+			LogIndex:    decodeOptionalHexUint64(item.LogIndex),
 		})
 	}
 	return logs, nil
@@ -405,6 +429,18 @@ func normalizeRPCURLs(urls []string) []string {
 	return out
 }
 
+func decodeOptionalHexUint64(value string) uint64 {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return 0
+	}
+	out, err := hexutil.DecodeUint64(value)
+	if err != nil {
+		return 0
+	}
+	return out
+}
+
 func sanitizeRPCURL(url string) string {
 	url = strings.TrimSpace(url)
 	if url == "" {
@@ -435,8 +471,12 @@ type rpcResponse struct {
 }
 
 type rpcLog struct {
-	Address string   `json:"address"`
-	Topics  []string `json:"topics"`
+	Address     string   `json:"address"`
+	Topics      []string `json:"topics"`
+	Data        string   `json:"data"`
+	BlockNumber string   `json:"blockNumber"`
+	TxHash      string   `json:"transactionHash"`
+	LogIndex    string   `json:"logIndex"`
 }
 
 type rpcAssetTransfersResult struct {
